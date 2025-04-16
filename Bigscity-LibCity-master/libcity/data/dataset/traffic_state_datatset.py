@@ -184,7 +184,7 @@ class TrafficStateDataset(AbstractDataset):
             self._distance_inverse()
         elif self.calculate_weight_adj and self.set_weight_link_or_dist.lower() != 'link':
             self._calculate_adjacency_matrix()
-
+        
     def _load_grid_rel(self):
         """
         根据网格结构构建邻接矩阵，一个格子跟他周围的8个格子邻接
@@ -280,6 +280,9 @@ class TrafficStateDataset(AbstractDataset):
         data = []
         for i in range(0, df.shape[0], len_time):
             data.append(df[i:i + len_time].values)
+        
+        data = data[:-1]
+        # 这里需要注意，最后一个时间点的数据可能不完整，所以要去掉
         data = np.array(data, dtype=np.float)  # (len(self.geo_ids), len_time, feature_dim)
         data = data.swapaxes(0, 1)  # (len_time, len(self.geo_ids), feature_dim)
         self._logger.info("Loaded file " + filename + '.dyna' + ', shape=' + str(data.shape))
