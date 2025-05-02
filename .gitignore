@@ -1,4 +1,10 @@
 Raw_Dataset_Zip/
 Raw_Dataset/
-Bigscity-LibCity-master/
-server_output_error/
+Bigscity-LibCity/
+output_error/
+test.sh
+__pycache__/
+cache/
+log/
+LLM/
+raw_data/
