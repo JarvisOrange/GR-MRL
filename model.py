@@ -5,29 +5,34 @@ from peft import LoraConfig, get_peft_model, PeftModel
 
 
 
-
 class GR_MRL(nn.Module):
     def __init__(self):
         super(GR_MRL, self).__init__()
 
+    
+    def Node_embedding(self, input_ids):
+        # Custom node embedding logic
+        pass
 
-    def input_embedding(self, input_ids):
+    
+
+    def time_series_embedding(self, input_ids):
         # Custom input embedding logic
         pass
-        
-    def RAG_embedding(self, input_ids):
-        # Custom RAG logic
+
+    def position_embedding(self, input_ids):
         pass
 
     def text_embedding(self, input_ids):
         pass
+        
 
     def temporal_state_embedding(self, input_ids):
         pass
 
+
     def forward(self, input_ids, attention_mask=None):
         pass
-
 
 
 class PositionEmbedding(nn.Module):
@@ -46,6 +51,7 @@ class PositionEmbedding(nn.Module):
         seq_len = x.size(1)
         positions = torch.arange(seq_len, dtype=torch.long).unsqueeze(0).expand_as(x)
         return self.position_embedding(positions)
+    
 
 class LoraModel():
     def __init__(self, model_name):

@@ -8,3 +8,4 @@ cache/
 log/
 LLM/
 raw_data/
+checkpoint/

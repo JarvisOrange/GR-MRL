@@ -4,8 +4,8 @@ import pandas as pd
 from numpy import copy
 from torch.utils.data import Dataset, DataLoader
 from MyUtils import *
-from log import get_logger
-from Scaler import *
+from GR_MRL.logger import get_logger
+from GR_MRL.Scaler import *
 
 
 import warnings
@@ -13,16 +13,33 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
+class ListDataset(Dataset):
+    def __init__(self, data):
+        """
+        data: 必须是一个 list
+        """
+        self.data = data
+
+    def __getitem__(self, index):
+        return self.data[index]
+
+    def __len__(self):
+        return len(self.data)
+
+
 class METRLA_Dataset(Dataset):
     def __init__(self, 
-                 dataset='METR_LA',
+                dataset='METR_LA',
                 train=True,
                 train_rate=0.7,
                 eval_rate=0.1,
                 test_rate=0.2,
                 batch_size=64, 
                 root_path='./raw_data/',
+                return_single_feature=False,
                 saved_model=True):
+
+        self.return_sing_feature = False
 
         self.data_path = root_path + dataset + '/'
         
@@ -42,8 +59,8 @@ class METRLA_Dataset(Dataset):
         
 
         self.batch_size = batch_size
-        self.input_window = self.config.get('input_window', 12)
-        self.output_window = self.config.get('output_window', 6)
+        self.input_window = self.config.get('input_window', 72)
+        self.output_window = self.config.get('output_window', 12)
         self.scaler_type = self.config.get('scaler_type', 'normal')
 
         self.num_workers = self.config.get('num_workers', 4)
@@ -204,12 +221,11 @@ class METRLA_Dataset(Dataset):
             dynafile = dynafile[dynafile.columns[2:]]  # 从time列开始所有列
         # 求时间序列
         self.timesolts = list(dynafile['time'][:int(dynafile.shape[0] / len(self.geo_ids))])
-        self.idx_of_timesolts = dict()
+        
         if not dynafile['time'].isna().any():  # 时间没有空值
             self.timesolts = list(map(lambda x: x.replace('T', ' ').replace('Z', ''), self.timesolts))
             self.timesolts = np.array(self.timesolts, dtype='datetime64[ns]')
-            for idx, _ts in enumerate(self.timesolts):
-                self.idx_of_timesolts[_ts] = idx
+            
         # 转3-d数组
         feature_dim = len(dynafile.columns) - 2
         df = dynafile[dynafile.columns[-feature_dim:]]
@@ -221,40 +237,10 @@ class METRLA_Dataset(Dataset):
         data = data[:-1]
         # 这里需要注意，最后一个时间点的数据可能不完整，所以要去掉
         data = np.array(data, dtype=np.float32)  # (len(self.geo_ids), len_time, feature_dim)
-        data = data.swapaxes(0, 1)  # (len_time, len(self.geo_ids), feature_dim)
         self._logger.info("Loaded file " + filename + '.dyna' + ', shape=' + str(data.shape))
         return data
 
-    def _generate_input_data(self, df):
-        """
-        根据全局参数`input_window`和`output_window`切分输入，产生模型需要的张量输入，
-        即使用过去`input_window`长度的时间序列去预测未来`output_window`长度的时间序列
-
-        Args:
-            df(np.ndarray): 数据数组，shape: (len_time, ..., feature_dim)
-
-        Returns:
-            tuple: tuple contains:
-                x(np.ndarray): 模型输入数据，(epoch_size, input_length, ..., feature_dim) \n
-                y(np.ndarray): 模型输出数据，(epoch_size, output_length, ..., feature_dim)
-        """
-        num_samples = df.shape[0]
-        # 预测用的过去时间窗口长度 取决于self.input_window
-        x_offsets = np.sort(np.concatenate((np.arange(-self.input_window + 1, 1, 1),)))
-        # 未来时间窗口长度 取决于self.output_window
-        y_offsets = np.sort(np.arange(1, self.output_window + 1, 1))
-
-        x, y = [], []
-        min_t = abs(min(x_offsets))
-        max_t = abs(num_samples - abs(max(y_offsets)))
-        for t in range(min_t, max_t):
-            x_t = df[t + x_offsets, ...]
-            y_t = df[t + y_offsets, ...]
-            x.append(x_t)
-            y.append(y_t)
-        x = np.stack(x, axis=0)
-        y = np.stack(y, axis=0)
-        return x, y
+        
 
     def _generate_data(self):
         """
@@ -287,6 +273,39 @@ class METRLA_Dataset(Dataset):
         self._logger.info("Dataset created")
         self._logger.info("x shape: " + str(x.shape) + ", y shape: " + str(y.shape))
         return x, y
+
+    def _generate_input_data(self, df):
+        """
+        根据全局参数`input_window`和`output_window`切分输入，产生模型需要的张量输入，
+        即使用过去`input_window`长度的时间序列去预测未来`output_window`长度的时间序列
+
+        Args:
+            df(np.ndarray): 数据数组，shape: (len_time, ..., feature_dim)
+
+        Returns:
+            tuple: tuple contains:
+                x(np.ndarray): 模型输入数据，(epoch_size, input_length, ..., feature_dim) \n
+                y(np.ndarray): 模型输出数据，(epoch_size, output_length, ..., feature_dim)
+        """
+        num_samples = df.shape[0]
+        # 预测用的过去时间窗口长度 取决于self.input_window
+        x_offsets = np.sort(np.concatenate((np.arange(-self.input_window + 1, 1, 1),)))
+        # 未来时间窗口长度 取决于self.output_window
+        y_offsets = np.sort(np.arange(1, self.output_window + 1, 1))
+
+        x, y = [], []
+        min_t = abs(min(x_offsets))
+        max_t = abs(num_samples - abs(max(y_offsets)))
+        for t in range(min_t, max_t):
+            x_t = df[t + x_offsets, ...]
+            y_t = df[t + y_offsets, ...]
+            x.append(x_t)
+            y.append(y_t)
+        x = np.stack(x, axis=0)
+        y = np.stack(y, axis=0)
+        return x, y
+
+   
 
     def _generate_train_val_test(self):
         """
@@ -459,6 +478,8 @@ class METRLA_Dataset(Dataset):
                                 self.batch_size, self.num_workers, pad_with_last_sample=self.pad_with_last_sample)
         self.num_batches = len(self.train_dataloader)
         return self.train_dataloader, self.eval_dataloader, self.test_dataloader
+
+    
 
     def generate_dataloader(self, train_data, eval_data, test_data, feature_name,
                         batch_size, num_workers, 

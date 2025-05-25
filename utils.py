@@ -7,6 +7,7 @@ import time
 import sys
 import json
 import torch
+import torch.nn as nn 
 
 class ConfigParser(object):
     """
@@ -610,3 +611,12 @@ class ObjectView:
 # TODO: 1. check if storage allows, send all data to gpu 5. (optional) add directed graph
 # TODO: 6. (optional) enable using original node attributes as initial feature (only need to modify file readin)
 # TODO: 7. (optional) rw using sparse matrix for multiplication
+
+
+class Feq_Loss(nn.Module):
+    def __init__(self):
+        super(Feq_Loss, self).__init__()
+        
+    def forward(self, y_pred, y_true):
+        loss_feq = (torch.fft.rfft(y_pred, dim=1) - torch.fft.rfft(y_true, dim=1)).abs().mean()
+        return loss_feq
