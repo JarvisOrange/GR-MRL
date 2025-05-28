@@ -12,6 +12,13 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+dataset_path_dict = {
+    "PEMS": 'pems-bay',
+    "LA": 'metr-la',
+    'CD': 'chengdu_m',
+    'SZ': 'shenzhen',
+}
+
 
 class ListDataset(Dataset):
     def __init__(self, data):
@@ -27,109 +34,94 @@ class ListDataset(Dataset):
         return len(self.data)
 
 
-class METRLA_Dataset(Dataset):
+class LA_Dataset(Dataset):
     def __init__(self, 
-                dataset='METR_LA',
-                train=True,
-                train_rate=0.7,
-                eval_rate=0.1,
-                test_rate=0.2,
-                batch_size=64, 
+                dataset='LA',
                 root_path='./raw_data/',
+                train=True,
+                split_rate=[0.7, 0.1, 0.2],  # train, eval, test
+                batch_size=64, 
                 return_single_feature=False,
                 saved_model=True):
 
-        self.return_sing_feature = False
+        # self.return_sing_feature = False
 
-        self.data_path = root_path + dataset + '/'
+        # self.data_path = root_path + dataset + '/'
         
-        self.config_file_name = self.data_path + '/' +'config'
+        # self.config_file_name = self.data_path + '/' +'config'
 
-        self.config = ConfigParser(dataset, self.config_file_name, saved_model, train)
+        # self.config = ConfigParser(dataset, self.config_file_name, saved_model, train)
 
-        self._logger = get_logger(self.config)
+        # self._logger = get_logger(self.config)
 
-        self.dataset = dataset
+        # self.dataset = dataset
 
-        #train test valid
-        self.train_rate = train_rate
-        self.eval_rate = eval_rate
-        self.test_rate = test_rate
-        self.shuffle_dataset = True
+        # #train test valid
+        # self.train_rate, self.eval_rate, self.test_rate = split_rate
+        # self.shuffle_dataset = True
         
 
-        self.batch_size = batch_size
-        self.input_window = self.config.get('input_window', 72)
-        self.output_window = self.config.get('output_window', 12)
-        self.scaler_type = self.config.get('scaler_type', 'normal')
+        # self.batch_size = batch_size
+        # self.input_window = self.config.get('input_window', 72)
+        # self.output_window = self.config.get('output_window', 12)
+        # self.scaler_type = self.config.get('scaler_type', 'normal')
 
-        self.num_workers = self.config.get('num_workers', 4)
+        # self.num_workers = self.config.get('num_workers', 4)
 
-        self.data = None # initialize
+        # self.data = None # initialize
 
-        #get attribute from config
-        self.geo_file = self.config.get('geo_file', self.dataset)
-        self.rel_file = self.config.get('rel_file', self.dataset)
+        # #get attribute from config
+        # self.geo_file = self.config.get('geo_file', self.dataset)
+        # self.rel_file = self.config.get('rel_file', self.dataset)
 
-        self.weight_col = self.config.get('weight_col', '')
-        self.data_col = self.config.get('data_col', '')
-        self.ext_col = self.config.get('ext_col', '')
-        self.geo_file = self.config.get('geo_file', self.dataset)
-        self.rel_file = self.config.get('rel_file', self.dataset)
+        # self.weight_col = self.config.get('weight_col', '')
+        # self.data_col = self.config.get('data_col', '')
+        # self.ext_col = self.config.get('ext_col', '')
+        # self.geo_file = self.config.get('geo_file', self.dataset)
+        # self.rel_file = self.config.get('rel_file', self.dataset)
         
-        self.feature_name = {'X': 'float', 'y': 'float'}
-        self.ext_file = self.config.get('ext_file', self.dataset)
-        self.output_dim = self.config.get('output_dim', 1)
-        self.time_intervals = self.config.get('time_intervals', 300)  # s
-        self.init_weight_inf_or_zero = self.config.get('init_weight_inf_or_zero', 'inf')
-        self.set_weight_link_or_dist = self.config.get('set_weight_link_or_dist', 'dist')
-        self.bidir_adj_mx = self.config.get('bidir_adj_mx', False)
-        self.calculate_weight_adj = self.config.get('calculate_weight_adj', False)
-        self.weight_adj_epsilon = self.config.get('weight_adj_epsilon', 0.1)
-        self.distance_inverse = self.config.get('distance_inverse', False)
-        self.pad_with_last_sample = self.config.get('pad_with_last_sample', False)
+        # self.feature_name = {'X': 'float', 'y': 'float'}
+        # self.ext_file = self.config.get('ext_file', self.dataset)
+        # self.output_dim = self.config.get('output_dim', 1)
+        # self.time_intervals = self.config.get('time_intervals', 300)  # s
+        # self.init_weight_inf_or_zero = self.config.get('init_weight_inf_or_zero', 'inf')
+        # self.set_weight_link_or_dist = self.config.get('set_weight_link_or_dist', 'dist')
+        # self.bidir_adj_mx = self.config.get('bidir_adj_mx', False)
+        # self.calculate_weight_adj = self.config.get('calculate_weight_adj', False)
+        # self.weight_adj_epsilon = self.config.get('weight_adj_epsilon', 0.1)
+        # self.distance_inverse = self.config.get('distance_inverse', False)
+        # self.pad_with_last_sample = self.config.get('pad_with_last_sample', False)
 
 
-        self.data_files = self.config.get('data_files', self.dataset) #设置多个数据集
+        # self.data_files = self.config.get('data_files', self.dataset) #设置多个数据集
 
 
-        self.cache_file_name = os.path.join('./cache/dataset_cache/',
-                                            'traffic_state_{}.npz'.format(self.dataset))
-        self.cache_file_folder = './cache/dataset_cache/'
+        # self.cache_file_name = os.path.join('./cache/dataset_cache/',
+        #                                     'traffic_state_{}.npz'.format(self.dataset))
+        # self.cache_file_folder = './cache/dataset_cache/'
 
-        ensure_dir(self.cache_file_folder)
+        # ensure_dir(self.cache_file_folder)
 
-        self.cache_dataset = True if os.path.exists(self.cache_file_name) else False 
+        # self.cache_dataset = True if os.path.exists(self.cache_file_name) else False 
 
         
-        self.saved_cache_dataset = True
+        # self.saved_cache_dataset = True
 
 
-        # use function
-        self.__load_geo__()
+        # # use function
+        self.data_path = root_path  + '/' + dataset_path_dict[dataset] + '/'
         self.__load_rel__()
-        self._load_dyna_(dataset)
 
 
-    def __load_geo__(self):
-        """
-        加载.geo文件，格式[geo_id, type, coordinates, properties(若干列)]
 
-        """
-        
-        geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
-        self.geo_ids = list(geofile['geo_id'])
-        self.num_nodes = len(self.geo_ids)
-        self.geo_to_ind = {}
-        self.ind_to_geo = {}
-        for index, idx in enumerate(self.geo_ids):
-            self.geo_to_ind[idx] = index
-            self.ind_to_geo[index] = idx
-        self._logger.info("Loaded file " + self.geo_file + '.geo' + ', num_nodes=' + str(len(self.geo_ids)))
+
+
+        #self._load_dyna_()
+
 
 
     def __load_rel__(self):
-        relfile = pd.read_csv(self.data_path + self.rel_file + '.rel')
+        relfile = pd.read_csv(self.data_path + 'matrix.npy')
         self._logger.info('set_weight_link_or_dist: {}'.format(self.set_weight_link_or_dist))
         self._logger.info('init_weight_inf_or_zero: {}'.format(self.init_weight_inf_or_zero))
         if self.weight_col != '':  # 根据weight_col确认权重列
@@ -671,5 +663,221 @@ class PEMS_Dataset(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
+    
+
+class CD_Dataset(Dataset):
+    def __init__(self, dataset_name='CD',
+                train=True,
+                train_rate=0.7,
+                val_rate=0.1,
+                test_rate=0.2,
+                batch_size=64, 
+                root_path='./Raw_Dataset',
+                saved_model=True):
+        
+        self.config_file_name = root_path + '/' + dataset_name + '/' +'config.json'
+
+        self.config = ConfigParser(dataset_name, self.config_file_name, saved_model, train)
+
+        self.dataset_name = dataset_name
+        self.train_rate = train_rate
+        self.val_rate = val_rate
+
+        self.geo_file = self.config.get('geo_file', self.dataset)
+        self.rel_file = self.config.get('rel_file', self.dataset)
+
+        self.__load_geo__()
+        self.__load_rel__()
 
 
+    def __load_geo__(self):
+        """
+        加载.geo文件，格式[geo_id, type, coordinates, properties(若干列)]
+
+        """
+        
+        geofile = pd.read_csv(self.root_path + self.geo_file + '.geo')
+        self.geo_ids = list(geofile['geo_id'])
+        self.num_nodes = len(self.geo_ids)
+        self.geo_to_ind = {}
+        self.ind_to_geo = {}
+        for index, idx in enumerate(self.geo_ids):
+            self.geo_to_ind[idx] = index
+            self.ind_to_geo[index] = idx
+        self._logger.info("Loaded file " + self.geo_file + '.geo' + ', num_nodes=' + str(len(self.geo_ids)))
+
+    def __load_rel__(self):
+        relfile = pd.read_csv(self.data_path + self.rel_file + '.rel')
+        self._logger.info('set_weight_link_or_dist: {}'.format(self.set_weight_link_or_dist))
+        self._logger.info('init_weight_inf_or_zero: {}'.format(self.init_weight_inf_or_zero))
+        if self.weight_col != '':  # 根据weight_col确认权重列
+            if isinstance(self.weight_col, list):
+                if len(self.weight_col) != 1:
+                    raise ValueError('`weight_col` parameter must be only one column!')
+                self.weight_col = self.weight_col[0]
+            self.distance_df = relfile[~relfile[self.weight_col].isna()][[
+                'origin_id', 'destination_id', self.weight_col]]
+        else:
+            if len(relfile.columns) > 5 or len(relfile.columns) < 4:  # properties不只一列，且未指定weight_col，报错
+                raise ValueError("Don't know which column to be loaded! Please set `weight_col` parameter!")
+            elif len(relfile.columns) == 4:  # 4列说明没有properties列，那就是rel文件中有的代表相邻，否则不相邻
+                self.calculate_weight_adj = False
+                self.set_weight_link_or_dist = 'link'
+                self.init_weight_inf_or_zero = 'zero'
+                self.distance_df = relfile[['origin_id', 'destination_id']]
+            else:  # len(relfile.columns) == 5, properties只有一列，那就默认这一列是权重列
+                self.weight_col = relfile.columns[-1]
+                self.distance_df = relfile[~relfile[self.weight_col].isna()][[
+                    'origin_id', 'destination_id', self.weight_col]]
+        # 把数据转换成矩阵的形式
+        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float32)
+        if self.init_weight_inf_or_zero.lower() == 'inf' and self.set_weight_link_or_dist.lower() != 'link':
+            self.adj_mx[:] = np.inf
+        for row in self.distance_df.values:
+            if row[0] not in self.geo_to_ind or row[1] not in self.geo_to_ind:
+                continue
+            if self.set_weight_link_or_dist.lower() == 'dist':  # 保留原始的距离数值
+                self.adj_mx[self.geo_to_ind[row[0]], self.geo_to_ind[row[1]]] = row[2]
+                if self.bidir_adj_mx:
+                    self.adj_mx[self.geo_to_ind[row[1]], self.geo_to_ind[row[0]]] = row[2]
+            else:  # self.set_weight_link_or_dist.lower()=='link' 只保留01的邻接性
+                self.adj_mx[self.geo_to_ind[row[0]], self.geo_to_ind[row[1]]] = 1
+                if self.bidir_adj_mx:
+                    self.adj_mx[self.geo_to_ind[row[1]], self.geo_to_ind[row[0]]] = 1
+        self._logger.info("Loaded file " + self.rel_file + '.rel, shape=' + str(self.adj_mx.shape))
+        # 计算权重
+        if self.distance_inverse and self.set_weight_link_or_dist.lower() != 'link':
+            self._distance_inverse()
+        elif self.calculate_weight_adj and self.set_weight_link_or_dist.lower() != 'link':
+            self._calculate_adjacency_matrix()
+        
+
+
+    def __getitem__(self, index):
+        feat_id = index // self.tot_len
+        s_begin = index % self.tot_len
+
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+        seq_x = self.data_x[s_begin:s_end, feat_id:feat_id + 1]
+        seq_y = self.data_y[r_begin:r_end, feat_id:feat_id + 1]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return (len(self.data_x) - self.seq_len - self.pred_len + 1) * self.enc_in
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)
+
+
+class SZ_Dataset(Dataset):
+    def __init__(self, dataset_name='CD',
+                train=True,
+                train_rate=0.7,
+                val_rate=0.1,
+                test_rate=0.2,
+                batch_size=64, 
+                root_path='./Raw_Dataset',
+                saved_model=True):
+        
+        self.config_file_name = root_path + '/' + dataset_name + '/' +'config.json'
+
+        self.config = ConfigParser(dataset_name, self.config_file_name, saved_model, train)
+
+        self.dataset_name = dataset_name
+        self.train_rate = train_rate
+        self.val_rate = val_rate
+
+        self.geo_file = self.config.get('geo_file', self.dataset)
+        self.rel_file = self.config.get('rel_file', self.dataset)
+
+        self.__load_geo__()
+        self.__load_rel__()
+
+
+    def __load_geo__(self):
+        """
+        加载.geo文件，格式[geo_id, type, coordinates, properties(若干列)]
+
+        """
+        
+        geofile = pd.read_csv(self.root_path + self.geo_file + '.geo')
+        self.geo_ids = list(geofile['geo_id'])
+        self.num_nodes = len(self.geo_ids)
+        self.geo_to_ind = {}
+        self.ind_to_geo = {}
+        for index, idx in enumerate(self.geo_ids):
+            self.geo_to_ind[idx] = index
+            self.ind_to_geo[index] = idx
+        self._logger.info("Loaded file " + self.geo_file + '.geo' + ', num_nodes=' + str(len(self.geo_ids)))
+
+    def __load_rel__(self):
+        relfile = pd.read_csv(self.data_path + self.rel_file + '.rel')
+        self._logger.info('set_weight_link_or_dist: {}'.format(self.set_weight_link_or_dist))
+        self._logger.info('init_weight_inf_or_zero: {}'.format(self.init_weight_inf_or_zero))
+        if self.weight_col != '':  # 根据weight_col确认权重列
+            if isinstance(self.weight_col, list):
+                if len(self.weight_col) != 1:
+                    raise ValueError('`weight_col` parameter must be only one column!')
+                self.weight_col = self.weight_col[0]
+            self.distance_df = relfile[~relfile[self.weight_col].isna()][[
+                'origin_id', 'destination_id', self.weight_col]]
+        else:
+            if len(relfile.columns) > 5 or len(relfile.columns) < 4:  # properties不只一列，且未指定weight_col，报错
+                raise ValueError("Don't know which column to be loaded! Please set `weight_col` parameter!")
+            elif len(relfile.columns) == 4:  # 4列说明没有properties列，那就是rel文件中有的代表相邻，否则不相邻
+                self.calculate_weight_adj = False
+                self.set_weight_link_or_dist = 'link'
+                self.init_weight_inf_or_zero = 'zero'
+                self.distance_df = relfile[['origin_id', 'destination_id']]
+            else:  # len(relfile.columns) == 5, properties只有一列，那就默认这一列是权重列
+                self.weight_col = relfile.columns[-1]
+                self.distance_df = relfile[~relfile[self.weight_col].isna()][[
+                    'origin_id', 'destination_id', self.weight_col]]
+        # 把数据转换成矩阵的形式
+        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float32)
+        if self.init_weight_inf_or_zero.lower() == 'inf' and self.set_weight_link_or_dist.lower() != 'link':
+            self.adj_mx[:] = np.inf
+        for row in self.distance_df.values:
+            if row[0] not in self.geo_to_ind or row[1] not in self.geo_to_ind:
+                continue
+            if self.set_weight_link_or_dist.lower() == 'dist':  # 保留原始的距离数值
+                self.adj_mx[self.geo_to_ind[row[0]], self.geo_to_ind[row[1]]] = row[2]
+                if self.bidir_adj_mx:
+                    self.adj_mx[self.geo_to_ind[row[1]], self.geo_to_ind[row[0]]] = row[2]
+            else:  # self.set_weight_link_or_dist.lower()=='link' 只保留01的邻接性
+                self.adj_mx[self.geo_to_ind[row[0]], self.geo_to_ind[row[1]]] = 1
+                if self.bidir_adj_mx:
+                    self.adj_mx[self.geo_to_ind[row[1]], self.geo_to_ind[row[0]]] = 1
+        self._logger.info("Loaded file " + self.rel_file + '.rel, shape=' + str(self.adj_mx.shape))
+        # 计算权重
+        if self.distance_inverse and self.set_weight_link_or_dist.lower() != 'link':
+            self._distance_inverse()
+        elif self.calculate_weight_adj and self.set_weight_link_or_dist.lower() != 'link':
+            self._calculate_adjacency_matrix()
+        
+
+
+    def __getitem__(self, index):
+        feat_id = index // self.tot_len
+        s_begin = index % self.tot_len
+
+        s_end = s_begin + self.seq_len
+        r_begin = s_end - self.label_len
+        r_end = r_begin + self.label_len + self.pred_len
+        seq_x = self.data_x[s_begin:s_end, feat_id:feat_id + 1]
+        seq_y = self.data_y[r_begin:r_end, feat_id:feat_id + 1]
+        seq_x_mark = self.data_stamp[s_begin:s_end]
+        seq_y_mark = self.data_stamp[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark
+
+    def __len__(self):
+        return (len(self.data_x) - self.seq_len - self.pred_len + 1) * self.enc_in
+
+    def inverse_transform(self, data):
+        return self.scaler.inverse_transform(data)

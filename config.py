@@ -1,7 +1,20 @@
 cfg = {
+    # 手动设置 tag
+    
+    # 0: init practice
+    # 1: train
+    
+
+    'exp_tag': 0,
+
     'debug_mode': False,
 
     # 路经设置
+    # LA: MetrLA
+    # PEMS: PEMS_BAY
+    # CD Chengdu
+    # SZ: Shenzhen
+
     'dataset_source': 'xianshi',
     'dataset_target': 'chengdushi',
     'traj_pth': {
@@ -73,8 +86,6 @@ cfg = {
     # finetune
     'finetune_ratio': [0.1, 0.2, 0.5, 1, 2, 5, 10, 20],
 
-    # 手动设置 tag
-    'exp_tag': 4,
 
     # 模型设置
     'num_hops': 6,
