@@ -39,6 +39,10 @@ def set_cfg():
 
 
 def main():
+    set_log(cfg['exp_tag'])
+    def some_function():
+        global logger  # 可选：若需要显式声明
+        logger.info("This is a log message")
     set_cfg()
     model = GR_MRL(cfg)
     model.to(cfg['device'])
