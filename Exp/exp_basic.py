@@ -1,6 +1,6 @@
 import os
 import torch
-from model import GR_MRL
+from GR_MRL import GR_MRL
 
 
 class Exp_basic(object):

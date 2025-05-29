@@ -4,7 +4,7 @@ import os
 from argparse import ArgumentParser
 
 from config import cfg
-from model import GR_MRL
+from GR_MRL import GR_MRL
 
 def set_log(exp_tag):
     logging.basicConfig(
@@ -42,6 +42,18 @@ def main():
     set_cfg()
     model = GR_MRL(cfg)
     model.to(cfg['device'])
+
+    #stage 0
+    dataset_preprocess()
+    
+    #stage 1
+    pretrain_time_encoder()
+    
+    #stage 2
+    cluster_node_embed()
+    
+    #stage 3
+    exp_finetune()
 
     # Cost Prediction
     disentangle_train(model, save_model=True)

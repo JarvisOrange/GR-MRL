@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from numpy import copy
 from torch.utils.data import Dataset, DataLoader
-from MyUtils import *
+from utils import *
 from GR_MRL.logger import get_logger
 from GR_MRL.Scaler import *
 
@@ -13,7 +13,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 dataset_path_dict = {
-    "PEMS": 'pems-bay',
+    "BAY": 'pems-bay',
     "LA": 'metr-la',
     'CD': 'chengdu_m',
     'SZ': 'shenzhen',
@@ -32,7 +32,9 @@ class ListDataset(Dataset):
 
     def __len__(self):
         return len(self.data)
-
+    
+class ClusterDataset()
+    
 
 class LA_Dataset(Dataset):
     def __init__(self, 
@@ -556,7 +558,7 @@ class LA_Dataset(Dataset):
 
 
 
-class PEMS_Dataset(Dataset):
+class BAY_Dataset(Dataset):
     def __init__(self, dataset_name='METRLA',
                 train=True,
                 train_rate=0.7,

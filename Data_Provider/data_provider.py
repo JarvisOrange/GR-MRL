@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader
 
 from Data_Provider.dataset_factory import (
     LA_Dataset,
-    PEMS_Dataset,
+    BAY_Dataset,
     CD_Dataset,
     SZ_Dataset,
 )
@@ -11,7 +11,7 @@ from Node_Embedding.DeepWalk import DeepWalk
 
 
 dataset_dict = {
-    "PEMS": PEMS_Dataset,
+    "BAY": BAY_Dataset,
     "LA": LA_Dataset,
     'CD': CD_Dataset,
     'SZ': SZ_Dataset,
