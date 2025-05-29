@@ -9,3 +9,4 @@ log/
 LLM/
 raw_data/
 checkpoint/
+.DS_Store/
