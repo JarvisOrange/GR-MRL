@@ -7,13 +7,11 @@ import torch
 def _calculate_normalized_laplacian(adj):
         adj = sp.coo_matrix(adj)
         d = np.array(adj.sum(1))
-        isolated_point_num = np.sum(np.where(d, 0, 1))
-        # self._logger.info(f"Number of isolated points: {isolated_point_num}")
         d_inv_sqrt = np.power(d, -0.5).flatten()
         d_inv_sqrt[np.isinf(d_inv_sqrt)] = 0.
         d_mat_inv_sqrt = sp.diags(d_inv_sqrt)
         normalized_laplacian = sp.eye(adj.shape[0]) - adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt).tocoo()
-        return normalized_laplacian, isolated_point_num
+        return normalized_laplacian
 
 def get_laplac_embed(adj_mx, dim=128):
         L, isolated_point_num = _calculate_normalized_laplacian(adj_mx)

@@ -206,3 +206,4 @@ class Feq_Loss(nn.Module):
     def forward(self, y_pred, y_true):
         loss_feq = (torch.fft.rfft(y_pred, dim=1) - torch.fft.rfft(y_true, dim=1)).abs().mean()
         return loss_feq
+    
