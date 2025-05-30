@@ -42,9 +42,6 @@ def get_space_syntax_embed(adj_mx):
     integration = get_integration(DiG)
     choice = get_choice(DiG)
     
-    
-  
-    
 
 l = ['CD','BAY','LA','SZ']
 matrix = np.load('raw_data/'+ l[3] +'/matrix.npy')
