@@ -34,14 +34,11 @@ def make_directed_graph(adj_mx):
 
 def get_space_syntax_embed(adj_mx):
     DiG = make_directed_graph(adj_mx)
-   
 
     connectivity = get_connectivity(DiG)
     integration = get_integration(DiG)
     choice = get_choice(DiG)
     
-
-l = ['CD','BAY','LA','SZ']
-matrix = np.load('raw_data/'+ l[0] +'/matrix.npy')
-print(matrix.shape)
-get_space_syntax_embed(matrix)
+    space_syntax_embed = np.hstack(connectivity, integration, choice)
+    
+    return space_syntax_embed
