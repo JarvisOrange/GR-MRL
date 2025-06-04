@@ -11,6 +11,7 @@ import logging
 import datetime
 from torch.utils.data import Dataset
 import random
+import torch.nn as nn
 
 def get_local_time():
     """
@@ -22,6 +23,7 @@ def get_local_time():
     cur = datetime.datetime.now()
     cur = cur.strftime('%b-%d-%Y_%H-%M-%S')
     return cur
+
 
 def get_logger(config, name=None):
     """
@@ -62,6 +64,7 @@ def get_logger(config, name=None):
     logger.info('Log directory: %s', log_dir)
     return logger
 
+
 def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -73,6 +76,7 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.set_default_dtype(torch.float32)
     return None
+
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -88,7 +92,6 @@ def ensure_dir(dir_path):
         os.makedirs(dir_path)
 
 
-
 def get_device(args):
     gpu = args.gpu
     return torch.device('cuda:{}'.format(gpu) if torch.cuda.is_available() else 'cpu')
@@ -102,19 +105,6 @@ def get_optimizer(model, args):
         return torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.l2)
     else:
         raise NotImplementedError
-
-
-def set_random_seed(args):
-    seed = args.seed
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    np.random.seed(seed)
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-
-
 
 
 class Batch(object):
@@ -190,3 +180,15 @@ class Feq_Loss(nn.Module):
         loss_feq = (torch.fft.rfft(y_pred, dim=1) - torch.fft.rfft(y_true, dim=1)).abs().mean()
         return loss_feq
     
+
+def get_normalized_adj(adj):
+    """
+    Returns the degree normalized adjacency matrix.
+    """
+    adj = adj + np.diag(np.ones(adj.shape[0], dtype=np.float32))
+    D = np.array(np.sum(adj, axis=1)).reshape((-1,))
+    D[D <= 10e-5] = 10e-5    # Prevent infs
+    diag = np.reciprocal(np.sqrt(D))
+    adj_wave = np.multiply(np.multiply(diag.reshape((-1, 1)), adj),
+                         diag.reshape((1, -1)))
+    return adj_wave

@@ -1,38 +1,72 @@
 cfg = {
+    #数据集信息
+    'dataset_info': {
+        'LA':{
+            'nodes': 207,
+            'edges': 1722,
+            'interval': 5,
+            'time_step': 34272,
+            'mean': '58.2749',
+            'std':'13.128',
+            'start_time': '2017-05-01 00:00:00',
+            'end_time': '2017-06-30 24:00:00'
+        },
+        'BAY':{
+            'nodes': 325,
+            'edges': 2694,
+            'interval': 5,
+            'time_step': 52116,
+            'mean': '61.7768',
+            'std':'9.2852',
+            'start_time': '2017-01-01 00:00:00',
+            'end_time': '2017-06-30 24:00:00'
+        },
+        'CD':{
+            'nodes': 524,
+            'edges': 1120,
+            'interval': 10,
+            'time_step': 17280,
+            'mean': '29.0235',
+            'std':'9.662',
+            'start_time': '2018-01-01 00:00:00',
+            'end_time': '2018-04-30 24:00:00'
+        },
+        'SZ':{
+            'nodes': 627,
+            'edges': 4845,
+            'interval': 10,
+            'time_step': 17280,
+            'mean': '31.0092',
+            'std':'10.9694',
+            'start_time': '2018-01-01 00:00:00',
+            'end_time': '2018-04-30 24:00:00'
+        }
+    },
+
     # 手动设置 tag
-    
-    # 0: init practice
+    # 0: try
     # 1: train
     
-
     'exp_tag': 0,
 
     'debug_mode': False,
 
+    # 数据集设置
     # BAY: PEMS_BAY
     # LA: MetrLA
     # CD Chengdu
     # SZ: Shenzhen
-
     # dataset name order: BLCS
-    # exmaple: BLC_S: B L C -> S
+    # exmaple: B L C_S: B L C -> S
 
-    'dataset_src_trg': 'BLC_S',
-
-    'dataset_source': 'BLC',
-    'dataset_target': 'S',
-
+    'dataset_src_trg': 'B-L-C_S',
     
 
-    'road_pth': 'map/road.csv',
-    'roadmap_pth': 'map/roadmap.csv',
-    'edge_pth': 'map/edge.csv',
+    'his_num': 72, # 历史时间步数
+    'pre_num': 12, # 预测时间步数
 
-    # 生成轨迹使用的 cost 类型
-    'use_pref': True,
-
-    # 确保速度是正数: max_spd - speed_mean
-    'max_spd': 100 / 3.6,
+    'target_day': 3,
+    
 
     # 训练设置
     'device': 'cuda',
