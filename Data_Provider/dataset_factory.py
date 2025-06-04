@@ -15,10 +15,32 @@ warnings.filterwarnings('ignore')
 dataset_path_dict = {
     "BAY": 'pems-bay',
     "LA": 'metr-la',
-    'CD': 'chengdu_m',
+    'CD': 'chengdu',
     'SZ': 'shenzhen',
 }
 
+class RoadTimeDataset(Dataset):
+    def __init__(self,  data_args, task_args, data_list=None, stage='source', test_data='metr-la', add_target=True, target_days=3):
+        super(RoadTimeDataset, self).__init__()
+           
+
+        self.data_args = data_args
+        self.task_args = task_args
+        self.his_num = task_args['his_num']
+        self.pred_num = task_args['pred_num']
+        self.stage = stage
+        self.add_target = add_target
+        self.test_data = test_data
+        self.target_days = target_days
+        self.predefined_data_list = data_list
+        # if(self.stage == 'pretrain' or self.stage == 'cluster'):
+        #     self.add_target = False
+        
+        self.load_data(stage, test_data)
+
+    def  load_data(self, stage):
+        
+        
 
 class ListDataset(Dataset):
     def __init__(self, data):

@@ -9,23 +9,20 @@ cfg = {
 
     'debug_mode': False,
 
-    # 路经设置
+    # BAY: PEMS_BAY
     # LA: MetrLA
-    # PEMS: PEMS_BAY
     # CD Chengdu
     # SZ: Shenzhen
 
-    'dataset_source': 'xianshi',
-    'dataset_target': 'chengdushi',
-    'traj_pth': {
-        'train': 'traj/train.csv',
-        'test': 'traj/test.csv',
-    },
+    # dataset name order: BLCS
+    # exmaple: BLC_S: B L C -> S
 
-    'traj_label_pth': {
-        'train': 'traj/train_label.csv',
-        'valid': 'traj/valid_label.csv',
-    },
+    'dataset_src_trg': 'BLC_S',
+
+    'dataset_source': 'BLC',
+    'dataset_target': 'S',
+
+    
 
     'road_pth': 'map/road.csv',
     'roadmap_pth': 'map/roadmap.csv',

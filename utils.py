@@ -12,24 +12,16 @@ import datetime
 from torch.utils.data import Dataset
 import random
 
-def set_seed(seed):
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-    np.random.seed(seed)  # Numpy module.
-    random.seed(seed)  # Python random module.
-    torch.manual_seed(seed)
-    torch.backends.cudnn.benchmark = False
-    torch.backends.cudnn.deterministic = True
-    torch.set_default_dtype(torch.float32)
-    return None
+def get_local_time():
+    """
+    获取时间
 
-def get_dataset_list(data_list):
-    dlist = []
-    return data
-
-def count_parameters(model):
-    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    Return:
+        datetime: 时间
+    """
+    cur = datetime.datetime.now()
+    cur = cur.strftime('%b-%d-%Y_%H-%M-%S')
+    return cur
 
 def get_logger(config, name=None):
     """
@@ -45,25 +37,13 @@ def get_logger(config, name=None):
     log_dir = './log'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    log_filename = '{}-{}.log'.format(config['dataset'], get_local_time())
+    log_filename = '{}-{}-{}.log'.format(config['exp_tag'],
+                                             config['dataset_src_trg'], get_local_time())
     logfilepath = os.path.join(log_dir, log_filename)
 
     logger = logging.getLogger(name)
 
-    log_level = config.get('log_level', 'INFO')
-
-    if log_level.lower() == 'info':
-        level = logging.INFO
-    elif log_level.lower() == 'debug':
-        level = logging.DEBUG
-    elif log_level.lower() == 'error':
-        level = logging.ERROR
-    elif log_level.lower() == 'warning':
-        level = logging.WARNING
-    elif log_level.lower() == 'critical':
-        level = logging.CRITICAL
-    else:
-        level = logging.INFO
+    level = logging.INFO
 
     logger.setLevel(level)
 
@@ -82,17 +62,20 @@ def get_logger(config, name=None):
     logger.info('Log directory: %s', log_dir)
     return logger
 
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
+    np.random.seed(seed)  # Numpy module.
+    random.seed(seed)  # Python random module.
+    torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.set_default_dtype(torch.float32)
+    return None
 
-def get_local_time():
-    """
-    获取时间
-
-    Return:
-        datetime: 时间
-    """
-    cur = datetime.datetime.now()
-    cur = cur.strftime('%b-%d-%Y_%H-%M-%S')
-    return cur
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 def ensure_dir(dir_path):
