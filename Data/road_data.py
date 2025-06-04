@@ -17,7 +17,7 @@ dataset_name_dict = {
 }
 
 class RoadData():
-    def __init__(self, cfg, stage='pretrain', target_day=3, logger=None):
+    def __init__(self, cfg, data_name, stage='pretrain',  target_day=3, logger=None):
         super(RoadData, self).__init__()
         self.cfg = cfg
         self._logger = logger
@@ -27,15 +27,10 @@ class RoadData():
         self.stage = stage
 
         self.target_day = target_day
-        
-        self.source_data, self.target_data = cfg['target_data'].split('_')
-        self.source_data = self.source_data.split('-')
 
-        self.target_data = dataset_name_dict[self.target_data]
-        self.source_data = [dataset_name_dict[n] for n in self.source_data]
-
-
-        self.load_data(stage, self.target_data)
+        self.data_name = data_name
+    
+        self.load_data(stage, self.data_name)
 
 
     def  load_data(self, stage, dataset_name):
