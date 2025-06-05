@@ -44,7 +44,7 @@ class RoadData():
 
         # time series data 
         # L * N * D
-        # D = 4 = speed, 1/288 * index, index, (weekday * 12 * 24) + index % 2016
+        # D = 5 = [speed,index_time_step, week_time, node, city]
         X = np.load()('./raw_data/{}/dataset_expand.npy'.format(dataset_name))
 
         X = X.transpose((1, 2, 0))
@@ -52,17 +52,6 @@ class RoadData():
             
         # [N, 2, L]
         X = torch.cat((X[:,0, :].unsqueeze(1), X[:,-1,:].unsqueeze(1)), dim = 1)
-
-
-        if interpolate_flag:
-            # 对于CD和SZ数据集，进行插值处理
-            self._logger.info('interpolate data for {}'.format(dataset_name))
-
-            interp_X = torch.nn.functional.interpolate(X, size = 2 * X.shape[-1] - 1,mode='linear',align_corners=True)
-            interp_X = torch.cat((interp_X[:,:,:1],interp_X),dim=-1)
-            interp_X[:,1,0] = ((interp_X[:,1,1] - 1) + 2016 ) % 2016 # 7 * 24 * 12 = 2016 is the week slot
-            X = interp_X
-
 
         if stage == 'pretrain': # use three source datasets only
             self.his_num = 288
