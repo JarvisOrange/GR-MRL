@@ -1,5 +1,22 @@
 cfg = {
-    #数据集信息
+
+    'stage':  {
+        'pretrain': {
+                'batch_size': 4,  # [B, N, 288, 2]
+                'train_epochs': 1000,
+                'lr' : 0.0001,
+        },
+        'finetune':{
+            'batch_size': 16,
+            'source_train_epochs': 1000,
+            'source_train_lr': 0.0001,
+            'target_train_epochs': 1000,
+            'target_train_lr': 0.0001,
+        },
+    },
+
+
+    #dataset information
     'dataset_info': {
         'LA':{
             'nodes': 207,

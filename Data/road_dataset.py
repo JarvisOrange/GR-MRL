@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Data, Dataset, DataLoader
 import os
 import numpy as np
 import pandas as pd
@@ -29,6 +29,8 @@ class RoadDataset(Dataset):
     def __init__(self, cfg, flag, logger=None):
         super(RoadDataset, self).__init__()
         
+        self.flag = flag
+        
         self.dim = 128
 
         self.source_data, self.target_data = cfg['target_data'].split('_')
@@ -38,17 +40,42 @@ class RoadDataset(Dataset):
         self.source_data = [dataset_name_dict[n] for n in self.source_data]
 
         if flag == 'finetune':
-            self.data_src_1 = RoadData(cfg, self.source_data[0], stage='source_train', logger=logger)
-            self.data_src_2 = RoadData(cfg, self.source_data[1], stage='source_train', logger=logger)
-            self.data_src_3 = RoadData(cfg, self.source_data[2], stage='source_train', logger=logger)
-
+            self.data_src_list = [RoadData(cfg, self.source_data[i], stage='source_train', logger=logger) for i in range(3)]
+            
             self.data_tgt = RoadData(cfg, self.target_data, stage='target', logger=logger)
 
+            self.data_test = RoadData(cfg, self.target_data, stage='test', logger=logger)
+
         if flag == 'cluster':
-            pass
+            self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], stage='time_cluster', logger=logger) for i in range(3)]
+        
+            self.data_road_cluster_list = [RoadData(cfg, self.source_data[i], stage='road_cluster', logger=logger) for i in range(3)]
+            
 
         if flag == 'pretrain':
-            pass
+            self.data_src_list = [RoadData(cfg, self.source_data[i], stage='pretrain', logger=logger) for i in range(3)]
+            
+            self.pretrain_batch_num = 0
+            batch_size = cfg['pretrain']['batch_size']
+            self.batchnum_dict = {}
+            
+            for dataset in self.data_src_list:
+                x, y = dataset.get_data()
+
+                batch_num = int(x // batch_size)
+                self.batchnum_dict[dataset.name] = batch_num
+                self.pretrain_batch_num += batch_num 
+            
+            self.pretrain_which_data = torch.zeros((self.pretrain_batch_num))
+            self.pretrain_which_pos = torch.zeros((self.pretrain_batch_num))
+
+            cur = 0
+            for idx, dataset in enumerate(self.data_src_list):
+                self.pretrain_which_data[cur : cur + self.batch_num_dict[dataset.name]] = int(idx)
+                self.pretrain_which_pos[cur : cur + self.batch_num_dict[dataset.name]] = torch.arange(cur, cur + self.batch_num_list[dataset.name]) - cur
+                cur += self.batch_num_list[dataset.name]
+            self.random_permutation =torch.randperm(self.pretrain_batch_num)
+
 
         if flag == 'rag':
             pass
@@ -66,8 +93,38 @@ class RoadDataset(Dataset):
         return len(self.data)
 
 
-    def __getitem__(self, idx):
-        return self.data[idx]
+    def __getitem__(self, index):
+        if self.flag == 'finetune':
+            pass
+
+        if self.flag == 'cluster':
+            pass
+            
+
+        if self.flag == 'pretrain':
+            # need query *batch_size* continuous batches
+            idx = self.random_permutation[index]
+            select_dataset = self.data_list[self.pretrain_which_data[idx].detach().cpu().numpy().astype(int)]
+            pos = self.pretrain_which_pos[idx].detach().cpu().numpy().astype(int)
+            batch_size = self.task_args['batch_size']
+            # print('idx : {}, select_dataset : {}, pos : {}'.format(idx, select_dataset, pos))
+            indices = torch.tensor(list(range(pos,pos+batch_size)))
+            x_data = self.x_list[select_dataset][indices]
+            y_data = self.y_list[select_dataset][indices]
+
+        if flag == 'rag':
+            pass
+
+        if flag =='try':
+            pass
+
+        x_data = x_data.float()
+        y_data = y_data.float()
+        node_num = self.A_list[select_dataset].shape[0]
+        data_i = Data(node_num=node_num, x=x_data, y=y_data,means=self.means_list[select_dataset],stds = self.stds_list[select_dataset])
+        data_i.data_name = select_dataset
+        
+        return data_i
 
 
     def get_laplace_matrix(self):
@@ -79,7 +136,7 @@ class RoadDataset(Dataset):
         adj = self.dataset.get_adj()
         return get_space_syntax_embed
     
-    
+
     def data_provide(cfg, stage):
         if stage == "try":
             flag_try=False
