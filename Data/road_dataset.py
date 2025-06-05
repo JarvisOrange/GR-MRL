@@ -107,7 +107,7 @@ class RoadDataset(Dataset):
             select_dataset = self.data_list[self.pretrain_which_data[idx].detach().cpu().numpy().astype(int)]
             pos = self.pretrain_which_pos[idx].detach().cpu().numpy().astype(int)
             batch_size = self.task_args['batch_size']
-            # print('idx : {}, select_dataset : {}, pos : {}'.format(idx, select_dataset, pos))
+            
             indices = torch.tensor(list(range(pos,pos+batch_size)))
             x_data = self.x_list[select_dataset][indices]
             y_data = self.y_list[select_dataset][indices]

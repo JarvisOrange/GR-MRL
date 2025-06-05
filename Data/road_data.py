@@ -163,7 +163,7 @@ class RoadData():
         x = torch.from_numpy(np.array(features)).float()
         y = torch.from_numpy(np.array(target)).float()
         
-        # x : [B, N, L, 4]
-        # y : [B, N, L]
+        # x : [B, N, l, 4]
+        # y : [B, N, l]
         return x, y
     
