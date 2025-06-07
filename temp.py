@@ -22,7 +22,7 @@ city = 'SZ'
 
 
 def func(city):
-    data = np.load('./raw_data/'+city+'/dataset_expand.npy')
+    data = np.load('./Raw_Data/'+city+'/dataset_expand.npy')
     date = datetime.datetime.strptime(data_dict[city], '%Y-%m-%d').date()
     weekday_start = date.weekday()
     print(weekday_start,data.shape)
@@ -61,7 +61,7 @@ def func(city):
                     temp[2*i+1, j, 4] = s
                 
             z += 2
-        np.save('./raw_data/'+city+'/dataset_new.npy', temp)
+        np.save('./Raw_Data/'+city+'/dataset_new.npy', temp)
     else:
         temp = np.zeros((data.shape[0], data.shape[1], 5), dtype=np.float32)
         for i in range(data.shape[0]):
@@ -75,9 +75,9 @@ def func(city):
                 s = dataset_name_dict[city]
                 temp[i, j, 4] = s
             z += 1
-        np.save('./raw_data/'+city+'/dataset_new.npy', temp)
+        np.save('./Raw_Data/'+city+'/dataset_new.npy', temp)
 
-    data = np.load('./raw_data/'+city+'/dataset_new.npy')
+    data = np.load('./Raw_Data/'+city+'/dataset_new.npy')
     print(data.shape)
     print(data[1,3,:])
 

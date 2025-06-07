@@ -38,13 +38,13 @@ class RoadData():
         self._logger.info('Loading dataset: {}'.format(dataset_name))
         
         # adjacency matrix
-        self.adj = np.load('./raw_data/{}/matrix.npy'.format(dataset_name))
+        self.adj = np.load('./Raw_Data/{}/matrix.npy'.format(dataset_name))
         self.road_num = self.adj.shape[0]
 
         # time series data 
         # L * N * D
         # D = 5 = [speed,index_time_step, week_time, node, city]
-        X = np.load()('./raw_data/{}/dataset_new.npy'.format(dataset_name))
+        X = np.load()('./Raw_Data/{}/dataset_new.npy'.format(dataset_name))
 
 
         # [N, 5, L]
