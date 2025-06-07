@@ -12,12 +12,20 @@ cfg = {
                 'train_epochs': 1000,
                 'lr' : 0.0001,
         },
-        'finetune':{
+        'source_train':{
             'batch_size': 16,
             'source_train_epochs': 1000,
             'source_train_lr': 0.0001,
+        },
+
+        'target_train':{
+            'batch_size': 16,
             'target_train_epochs': 1000,
             'target_train_lr': 0.0001,
+        },
+
+        'test':{
+            'batch_size': 16
         },
     },
 
