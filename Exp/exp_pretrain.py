@@ -15,19 +15,8 @@ from Data.road_dataset import *
 
 
 set_seed()
-seed=7
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-torch.cuda.manual_seed_all(seed)  # if you are using multi-GPU.
-np.random.seed(seed)  # Numpy module.
-random.seed(seed)  # Python random module.
-torch.manual_seed(seed)
-torch.backends.cudnn.benchmark = False
-torch.backends.cudnn.deterministic = True
-torch.set_default_dtype(torch.float32)
 
-
-def pretrain(cfg, logger=None):
+def pretrain(logger=None):
 
     device = cfg['device']
     
@@ -51,7 +40,7 @@ def pretrain(cfg, logger=None):
     best_model = None
 
     epochs = cfg['flag']['pretrain']['epoch']
-    
+
     ########################################
     #  train
 
@@ -139,7 +128,7 @@ def pretrain(cfg, logger=None):
         
     #####################################
     # test
-        for batch in tqdm(val_dataloader):
+        for batch in tqdm(test_dataloader):
             total_loss = []
             total_mae = []
             total_mse = []

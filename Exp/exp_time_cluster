@@ -1,33 +1,18 @@
 import os
 import torch
 from GR_MRL import GR_MRL
+from config import cfg
+from utils import kmeans_pytorch
 
+def time_cluster(dataset_src, logger=None):
+    device = cfg['device']
 
-class Exp_basic(object):
-    def __init__(self, args):
-        self.args = args
-        self.model_dict = {
-            "GR_MRL": GR_MRL,
-        }
-        self.device = self._acquire_device()
-        self.model = self._build_model().to(self.device)
+    path = './Save/time_patch_embed/' + dataset_src + '/emb.pt'
 
-    def _build_model(self):
-        raise NotImplementedError
+    time_patch_pool = torch.load(path).to(device)
 
-    def _acquire_device(self):
-        if self.args.use_gpu:
-            device = torch.device(
-                "cuda" if torch.cuda.is_available() else "cpu"
-            )  # Assume we only use 1 gpu at most
-            print("Use GPU")
-        else:
-            device = torch.device("cpu")
-            print("Use CPU")
-        return device
-
-    def _get_data(self):
-        pass
-
-    def train(self):
-        pass
+    center, center_label = kmeans_pytorch(
+        X=time_patch_pool , num_clusters=cfg['time_cluster_k'])
+    
+    torch.save(center,'./Save/pattern/{}/{}_c.pt'.format(dataset_src, cfg['time_cluster_k']))
+    torch.save(center_label,'./Save/pattern/{}/{}_cl.pt'.format(dataset_src, cfg['time_cluster_k']))

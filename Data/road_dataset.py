@@ -170,7 +170,7 @@ class RoadDataProvider():
     
                 cur += R_num_dict[dataset.name]
 
-            cluster_label = kmeans(self.Road_E, self.cfg['road_k']) #[label_2, label_10..., label_1]
+            cluster_label = kmeans_pytorch(self.Road_E, self.cfg['road_k']) #[label_2, label_10..., label_1]
 
             cluster_label_node_dict = {}
             self.X_road_cluster_dict = {}
@@ -184,6 +184,7 @@ class RoadDataProvider():
 
             dataset_name_dict = R_num_dict.keys()
             pre, _, _= self.data_road_cluster_0.get_data_info()
+            
             for k in cluster_label_node_dict.keys():
                 temp_list = list(cluster_label_node_dict[k])
                 temp_x = []

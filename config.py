@@ -94,11 +94,9 @@ cfg = {
 
     'laplacian_dim': 64,
 
-    'road_k': 16,
+    'road_cluster_k': 16,
 
-    'time_k': 32,
-
-
+    'time_cluster_k': 32,
 
     'his_num': 72, # 历史时间步数
     'pre_num': 12, # 预测时间步数
