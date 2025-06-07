@@ -13,7 +13,7 @@ def _calculate_normalized_laplacian(adj):
         normalized_laplacian = sp.eye(adj.shape[0]) - adj.dot(d_mat_inv_sqrt).transpose().dot(d_mat_inv_sqrt).tocoo()
         return normalized_laplacian
 
-def get_laplac_embed(adj_mx, dim=128):
+def get_laplac_embed(adj_mx, dim=64):
         L, isolated_point_num = _calculate_normalized_laplacian(adj_mx)
         EigVal, EigVec = np.linalg.eig(L.toarray())
         idx = EigVal.argsort()

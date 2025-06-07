@@ -3,8 +3,10 @@ import numpy as np
 import pandas as pd
 from numpy import copy
 from torch.utils.data import Dataset, DataLoader
-from utils import *
 
+from utils import *
+from Node_Embed_Model.Laplacian import *
+from Node_Embed_Model.SpaceSyntax import *
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -32,10 +34,6 @@ class RoadData():
 
 
     def  load_data(self, stage, dataset_name):
-        if dataset_name == "CD" or "SZ":
-            interpolate_flag = True
-        else:
-            interpolate_flag = False 
 
         self._logger.info('Loading dataset: {}'.format(dataset_name))
         
@@ -45,33 +43,36 @@ class RoadData():
         # time series data 
         # L * N * D
         # D = 5 = [speed,index_time_step, week_time, node, city]
-        X = np.load()('./raw_data/{}/dataset_expand.npy'.format(dataset_name))
+        X = np.load()('./raw_data/{}/dataset_new.npy'.format(dataset_name))
 
+
+        # [N, 5, L]
         X = X.transpose((1, 2, 0))
-        X = torch.tensor(X,dtype=torch.double)
+        X = torch.tensor(X,dtype=torch.float)
             
-        # [N, 2, L]
-        X = torch.cat((X[:,0, :].unsqueeze(1), X[:,-1,:].unsqueeze(1)), dim = 1)
-
+        
         if stage == 'pretrain': # use three source datasets only
+            # [N, 2, L]
+            X = torch.cat((X[:,0, :].unsqueeze(1), X[:,2].unsqueeze(1)), dim = 1)
+
             self.his_num = 288
             self.pre_num = 0
 
-            interval = 12 * 24 # all his, not predict 
+            self.interval = 12 * 24 # all his, not predict 
 
-            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, interval)
-            self._logger.info('{}_source_train : x shape : {}, y shape : {}'.format(dataset_name, x.shape, y.shape))
+            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, self.interval)
+            self._logger.info('{}_pretrain : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
         
         if stage == 'time_cluster':
-            x = X
+            X = X
 
             self.his_num = 12
             self.pre_num = 0
 
-            interval = 12
+            self.interval = 12
 
-            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, interval)
-            self._logger.info('{}_time_cluster : x shape : {}, y shape : {}'.format(dataset_name, x.shape, y.shape)) 
+            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, self.interval)
+            self._logger.info('{}_time_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
 
         if stage == 'road_cluster':
             X = X
@@ -79,18 +80,20 @@ class RoadData():
             self.his_num = 12
             self.pre_num = 0
 
-            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, interval)
-            self._logger.info('{}_road_cluster : x shape : {}, y shape : {}'.format(dataset_name, x.shape, y.shape)) 
+            self.interval = 12
+
+            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, self.interval)
+            self._logger.info('{}_road_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
 
         if stage == 'source_train':
 
             self.his_num = self.cfg['his_num']
             self.pred_num = self.cfg['pre_num']
 
-            interval = self.cfg['his_num']
+            self.interval = self.cfg['his_num']
 
-            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, interval)
-            self._logger.info('{}_source_train : x shape : {}, y shape : {}'.format(dataset_name, x.shape, y.shape))
+            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, self.interval)
+            self._logger.info('{}_source_train : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
         if stage == 'target':
             X = X[:, :, :288 * self.target_days] # 24 * 12 = 288
@@ -98,10 +101,10 @@ class RoadData():
             self.his_num = self.cfg['his_num']
             self.pred_num = self.cfg['pre_num']
 
-            interval = self.cfg['his_num']
+            self.interval = self.cfg['his_num']
             
-            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, interval)
-            self._logger.info('{}_target : x shape : {}, y shape : {}'.format(dataset_name, x.shape, y.shape))    
+            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, self.interval)
+            self._logger.info('{}_target : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
         if stage == 'test':
             X = X[:, :, 288 * self.target_days:]
@@ -109,12 +112,32 @@ class RoadData():
             self.his_num = self.cfg['his_num']
             self.pred_num = self.cfg['pre_num']
 
-            interval = 12
+            self.interval = 12
 
-            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, interval)
-            self._logger.info('{}_test : x shape : {}, y shape : {}'.format(dataset_name, x.shape, y.shape))
+            self.x, self.y = self.generate_dataset(X, self.his_num, self.pred_num, self.interval)
+            self._logger.info('{}_test : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
+    def generate_dataset(X, num_timesteps_input, num_timesteps_output, interval_step):
+        # Generate the beginning index and the ending index of a sample, which
+        # contains (num_points_for_training + num_points_for_predicting) points
+        indices = [(i, i + (num_timesteps_input + num_timesteps_output)) for i
+                in range(0, X.shape[2] - (num_timesteps_input + num_timesteps_output) + 1, interval_step)]
+
+        features, target = [], []
+        for i, j in indices:
+            features.append(
+                # [N, 5 L]
+                X[:, :, i: i + num_timesteps_input].transpose(
+                    (0, 2, 1)))
+            target.append(X[:, 0, i + num_timesteps_input: j])
+
+        x = np.array(features)
+        y = np.array(target)
         
+        # x : [B, N, l, 5]
+        # y : [B, N, l]
+        return x, y
+
 
     def get_data(self):
         """
@@ -128,31 +151,31 @@ class RoadData():
         return self.x, self.y
     
 
+    def get_data_num(self):
+        return self.x.shape[0]
+
+    def get_data_info(self):
+        return self.his_num, self.pre_num, self.interval
+
     def get_adj(self):
         """
         Get the adjacency matrix of the dataset
         """
         return self.adj
     
+    def get_node_embed(self):
+        temp1 =  self.get_laplace_matrix()
+        temp2 = self.get_space_syntax_matrix()
+        return np.hstack((temp1,temp2))
+    
+    def get_laplace_matrix(self):
+        adj = self.dataset.get_adj()
+        return get_laplac_embed(self.adj, self.cfg['laplacian_dim'])
 
-    def generate_dataset(X, num_timesteps_input, num_timesteps_output, interval_step):
-        # Generate the beginning index and the ending index of a sample, which
-        # contains (num_points_for_training + num_points_for_predicting) points
-        indices = [(i, i + (num_timesteps_input + num_timesteps_output)) for i
-                in range(0, X.shape[2] - (num_timesteps_input + num_timesteps_output) + 1, interval_step)]
 
-        features, target = [], []
-        for i, j in indices:
-            features.append(
-                # [N, 4, L]
-                X[:, :, i: i + num_timesteps_input].transpose(
-                    (0, 2, 1)))
-            target.append(X[:, 0, i + num_timesteps_input: j])
+    def get_space_syntax_matrix(self):
+        adj = self.dataset.get_adj()
+        return get_space_syntax_embed
 
-        x = torch.from_numpy(np.array(features)).float()
-        y = torch.from_numpy(np.array(target)).float()
-        
-        # x : [B, N, l, 4]
-        # y : [B, N, l]
-        return x, y
+    
     

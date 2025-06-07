@@ -4,8 +4,6 @@ import numpy as np
 import pandas as pd
 from utils import *
 
-from Node_Embed_Model.Laplacian import *
-from Node_Embed_Model.SpaceSyntax import *
 from road_data import RoadData
 
 
@@ -23,15 +21,60 @@ dataset_name_dict = {
     'C': 'CD',
     'S': 'SZ',
 }
-
-
 class RoadDataset(Dataset):
+    def __init__(self, flag, X, Y=None):
+        super(RoadDataset,self).__init__()
+        self.X = X
+        self.Y = Y
+        self.flag = flag
+
+
+    def __len__(self):
+        return self.X.shape
+
+    def __getitem__(self, index):
+        if self.flag == 'finetune':
+            pass
+
+        if self.flag == 'time_cluster':
+            x= self.X[index]
+            x = torch.from_numpy(x).float()
+            return x
+
+
+        if self.flag == 'road_cluster':
+            pass
+            
+
+        if self.flag == 'pretrain':
+            x= self.X[index]
+            y =self.Y[index]
+            x = torch.from_numpy(x).float()
+            y = torch.from_numpy(y).float()
+            return x, y
+            
+        if self.flag == 'rag':
+            pass
+
+        if self.flag =='try':
+            pass
+
+        x_data = x_data.float()
+        y_data = y_data.float()
+        node_num = self.A_list[select_dataset].shape[0]
+        data_i = Data(node_num=node_num, x=x_data, y=y_data,means=self.means_list[select_dataset],stds = self.stds_list[select_dataset])
+        data_i.data_name = select_dataset
+        
+        return data_i
+
+
+class RoadDataProvider():
     def __init__(self, cfg, flag, logger=None):
-        super(RoadDataset, self).__init__()
+        super(RoadDataProvider, self).__init__()
         
         self.flag = flag
+        self,cfg = cfg
         
-        self.dim = 128
 
         self.source_data, self.target_data = cfg['target_data'].split('_')
         self.source_data = self.source_data.split('-')
@@ -46,116 +89,90 @@ class RoadDataset(Dataset):
 
             self.data_test = RoadData(cfg, self.target_data, stage='test', logger=logger)
 
-        if flag == 'cluster':
+        if flag == 'time_cluster':
+            ### time patch
             self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], stage='time_cluster', logger=logger) for i in range(3)]
+
+            X_num = 0, X_num_dict = {}
         
+            his_num, pre_num, interval = self.data_src_list[0].get_data_info()
+            
+            for dataset in self.data_src_list:
+                temp = dataset.get_data_num()
+                X_num += temp
+                X_num_dict[dataset.name] = temp
+                
+            self.X = np.zeros([X_num, his_num], dtype=float)
+
+            cur = 0
+            for dataset in self.data_src_list:
+                x, _ = dataset.get_data()
+                
+                self.X[cur:cur + X_num_dict[dataset.name], :] = x
+
+                cur += X_num_dict[dataset.name]
+        
+        if flag == 'road_cluster':
+            ### road
             self.data_road_cluster_list = [RoadData(cfg, self.source_data[i], stage='road_cluster', logger=logger) for i in range(3)]
+            
+            R_num = 0, R_num_dict = {}
+
+            for dataset in self.data_src_list:
+                temp = dataset.get_adj().shape[0]
+                R_num += temp
+                R_num_dict[dataset.name] = temp
+            
+            self.Road_E = np.zeros([R_num,self.cfg['laplacian_dim']+3], dtype=float)
+
+            cur = 0
+            for dataset in self.data_src_list:
+                node_e = dataset.get_node_embed()
+                
+                self.X[cur:cur + R_num_dict[dataset.name], :] = node_e
+
+                cur += R_num_dict[dataset.name]
+
+            cluster_label = kmeans(self.Road_E, self.cfg['road_k'])
             
 
         if flag == 'pretrain':
             self.data_src_list = [RoadData(cfg, self.source_data[i], stage='pretrain', logger=logger) for i in range(3)]
-            
-            self.pretrain_batch_num = 0
-            batch_size = cfg['pretrain']['batch_size']
-            self.batchnum_dict = {}
+
+            X_num = 0, X_num_dict = {}
+        
+            his_num, pre_num, interval = self.data_src_list[0].get_data_info()
             
             for dataset in self.data_src_list:
-                x, y = dataset.get_data()
-
-                batch_num = int(x // batch_size)
-                self.batchnum_dict[dataset.name] = batch_num
-                self.pretrain_batch_num += batch_num 
-            
-            self.pretrain_which_data = torch.zeros((self.pretrain_batch_num))
-            self.pretrain_which_pos = torch.zeros((self.pretrain_batch_num))
+                temp = dataset.get_data_num()
+                X_num += temp
+                X_num_dict[dataset.name] = temp
+                
+            self.X = np.zeros([X_num, his_num], dtype=float)
+            self.Y = np.zeros([X_num, pre_num], dtype=float)
 
             cur = 0
-            for idx, dataset in enumerate(self.data_src_list):
-                self.pretrain_which_data[cur : cur + self.batch_num_dict[dataset.name]] = int(idx)
-                self.pretrain_which_pos[cur : cur + self.batch_num_dict[dataset.name]] = torch.arange(cur, cur + self.batch_num_list[dataset.name]) - cur
-                cur += self.batch_num_list[dataset.name]
-            self.random_permutation =torch.randperm(self.pretrain_batch_num)
+            for dataset in self.data_src_list:
+                x, y = dataset.get_data()
+                
+                self.X[cur:cur + X_num_dict[dataset.name], :] = x
+                self.Y[cur:cur + X_num_dict[dataset.name], :] = y
 
-
-        if flag == 'rag':
-            pass
-
-        if flag =='try':
-            pass
-
-
-    def combine_node_embed(self, ):
-        laplace_e = self.get_laplace_matrix()
-        spacesyntax_e = self.get_space_syntax_matrix()
-
-
-    def __len__(self):
-        return len(self.data)
-
-
-    def __getitem__(self, index):
-        if self.flag == 'finetune':
-            pass
-
-        if self.flag == 'cluster':
-            pass
-            
-
-        if self.flag == 'pretrain':
-            # need query *batch_size* continuous batches
-            idx = self.random_permutation[index]
-            select_dataset = self.data_list[self.pretrain_which_data[idx].detach().cpu().numpy().astype(int)]
-            pos = self.pretrain_which_pos[idx].detach().cpu().numpy().astype(int)
-            batch_size = self.task_args['batch_size']
-            
-            indices = torch.tensor(list(range(pos,pos+batch_size)))
-            x_data = self.x_list[select_dataset][indices]
-            y_data = self.y_list[select_dataset][indices]
+                cur += dataset.get_data_num()
+            self._logger.info('{}_pretrain: x shape : {}, y shape : {}'.format(self.cfg['dataset_src_trg'], self.X.shape, self.Y.shape)) 
 
         if flag == 'rag':
             pass
 
         if flag =='try':
             pass
-
-        x_data = x_data.float()
-        y_data = y_data.float()
-        node_num = self.A_list[select_dataset].shape[0]
-        data_i = Data(node_num=node_num, x=x_data, y=y_data,means=self.means_list[select_dataset],stds = self.stds_list[select_dataset])
-        data_i.data_name = select_dataset
-        
-        return data_i
-
-
-    def get_laplace_matrix(self):
-        adj = self.dataset.get_adj()
-        return get_laplac_embed(self.adj)
-
-
-    def get_space_syntax_matrix(self):
-        adj = self.dataset.get_adj()
-        return get_space_syntax_embed
     
 
-    def data_provide(cfg, stage):
-        if stage == "try":
-            flag_try=False
-            shuffle = False
-            drop_last = True
-            batch_size = 1  # bsz=1 for evaluation
-        else:
-            flag_try=True
-            shuffle = True
-            drop_last = True
-            batch_size = cfg['batch_size']  # bsz for train and valid
-
     def generate_dataloader(self):
-        data_loader = DataLoader(
-            data_set,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            # num_workers=args.num_workers, # not very stable
-            drop_last=drop_last,
-        )
+        bs = self.cfg['pretrain']['batch_size']
+        drop_last = self.cfg['drop_last']
+        R_dataset = RoadDataset(self.flag, self.X, self.Y)
 
-        return data_set, data_loader
+        dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
+
+        return dataloader

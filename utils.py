@@ -105,72 +105,38 @@ def get_optimizer(model, args):
         return torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.l2)
     else:
         raise NotImplementedError
+    
 
 
-class Batch(object):
+def kmeans(X, n_clusters, max_iter=100, tol=1e-4, device='cuda'):
+    """
+    PyTorch 实现的 K-means 聚类（GPU 版本）
+    """
+    X = X.to(device)
 
-    def __init__(self, feature_name):
-        """Summary of class here
+    n_samples, n_features = X.shape
+    indices = torch.randperm(n_samples, device=device)[:n_clusters]
+    centers = X[indices].clone()
 
-        Args:
-            feature_name (dict): key is the corresponding feature's name, and
-                the value is the feature's data type
-        """
-        self.data = {}
-        self.feature_name = feature_name
-        for key in feature_name:
-            self.data[key] = []
+    for _ in range(max_iter):
+        distances = torch.cdist(X, centers)  # [n_samples, n_clusters]
+        
+        labels = torch.argmin(distances, dim=1)  # [n_samples]
+        
+        new_centers = torch.zeros_like(centers)
+        for i in range(n_clusters):
+            mask = (labels == i)
+            if torch.sum(mask) > 0:
+                new_centers[i] = torch.mean(X[mask], dim=0)
+        
+        
+        if torch.norm(new_centers - centers) < tol:
+            break
+            
+        centers = new_centers
 
-    def __getitem__(self, key):
-        if key in self.data:
-            return self.data[key]
-        else:
-            raise KeyError('{} is not in the batch'.format(key))
-
-    def __setitem__(self, key, value):
-        if key in self.data:
-            self.data[key] = value
-        else:
-            raise KeyError('{} is not in the batch'.format(key))
-
-    def append(self, item):
-        """
-        append a new item into the batch
-
-        Args:
-            item (list): 一组输入，跟feature_name的顺序一致，feature_name即是这一组输入的名字
-        """
-        if len(item) != len(self.feature_name):
-            raise KeyError('when append a batch, item is not equal length with feature_name')
-        for i, key in enumerate(self.feature_name):
-            self.data[key].append(item[i])
-
-    def to_tensor(self, device):
-        """
-        将数据self.data转移到device上
-
-        Args:
-            device(torch.device): GPU/CPU设备
-        """
-        for key in self.data:
-            if self.feature_name[key] == 'int':
-                self.data[key] = torch.LongTensor(np.array(self.data[key])).to(device)
-            elif self.feature_name[key] == 'float':
-                self.data[key] = torch.FloatTensor(np.array(self.data[key])).to(device)
-            else:
-                raise TypeError(
-                    'Batch to_tensor, only support int, float but you give {}'.format(self.feature_name[key]))
-
-    def to_ndarray(self):
-        for key in self.data:
-            if self.feature_name[key] == 'int':
-                self.data[key] = np.array(self.data[key])
-            elif self.feature_name[key] == 'float':
-                self.data[key] = np.array(self.data[key])
-            else:
-                raise TypeError(
-                    'Batch to_ndarray, only support int, float but you give {}'.format(self.feature_name[key]))
- 
+    return labels.cpu(), centers.cpu()
+    
 
 class Feq_Loss(nn.Module):
     def __init__(self):
@@ -181,14 +147,3 @@ class Feq_Loss(nn.Module):
         return loss_feq
     
 
-def get_normalized_adj(adj):
-    """
-    Returns the degree normalized adjacency matrix.
-    """
-    adj = adj + np.diag(np.ones(adj.shape[0], dtype=np.float32))
-    D = np.array(np.sum(adj, axis=1)).reshape((-1,))
-    D[D <= 10e-5] = 10e-5    # Prevent infs
-    diag = np.reciprocal(np.sqrt(D))
-    adj_wave = np.multiply(np.multiply(diag.reshape((-1, 1)), adj),
-                         diag.reshape((1, -1)))
-    return adj_wave

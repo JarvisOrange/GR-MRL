@@ -1,4 +1,10 @@
 cfg = {
+    # 手动设置 tag
+    # 0: try
+    # 1: train
+    
+    'exp_tag': 0,
+
 
     'stage':  {
         'pretrain': {
@@ -60,13 +66,7 @@ cfg = {
         }
     },
 
-    # 手动设置 tag
-    # 0: try
-    # 1: train
     
-    'exp_tag': 0,
-
-    'debug_mode': False,
 
     # 数据集设置
     # BAY: PEMS_BAY
@@ -77,7 +77,15 @@ cfg = {
     # exmaple: B L C_S: B L C -> S
 
     'dataset_src_trg': 'B-L-C_S',
+
     
+    'laplacian_dim': 64,
+
+    'road_k': 16,
+
+    'time_k': 32,
+
+
 
     'his_num': 72, # 历史时间步数
     'pre_num': 12, # 预测时间步数
@@ -87,6 +95,8 @@ cfg = {
 
     # 训练设置
     'device': 'cuda',
+
+    'drop_last': True,
 
     'epoch_recons': 200,
     'epoch_cluster': 500,
