@@ -184,7 +184,7 @@ class RoadDataProvider():
 
             dataset_name_dict = R_num_dict.keys()
             pre, _, _= self.data_road_cluster_0.get_data_info()
-            
+
             for k in cluster_label_node_dict.keys():
                 temp_list = list(cluster_label_node_dict[k])
                 temp_x = []
@@ -248,13 +248,13 @@ class RoadDataProvider():
         
 
         indices = np.random.permutation(self.X_train.shape[0])
-        X_train_shuffle = self.X_train[indices]
+        X_train_shuffle = X_train[indices]
 
         indices = np.random.permutation(self.X_val.shape[0])
-        X_val_shuffle = self.X_train[indices]
+        X_val_shuffle = X_val[indices]
 
         indices = np.random.permutation(self.X_test.shape[0])
-        X_test_shuffle = self.X_test[indices]
+        X_test_shuffle = X_test[indices]
 
         R_train_dataset = RoadDataset(self.flag, X_train_shuffle)
         R_val_dataset = RoadDataset(self.flag, X_val_shuffle)
