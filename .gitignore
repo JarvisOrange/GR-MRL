@@ -7,7 +7,6 @@ __pycache__/
 cache/
 log/
 LLM/
-Save
 Raw_Data/
 checkpoint/
 .DS_Store/

@@ -1,5 +1,6 @@
 import numpy as np
 import datetime
+from config import cfg
 
 data_dict = {
     "BAY": '2017-01-01',
@@ -28,7 +29,7 @@ def func(city):
     print(weekday_start,data.shape)
     z=0
     if city == 'CD' or city == 'SZ':
-        temp = np.zeros((data.shape[0]*2-1, data.shape[1], 5), dtype=np.float32)
+        temp = np.zeros((data.shape[0]*2-1, data.shape[1], 7), dtype=np.float32)
         for i in range(0, data.shape[0]):
             for j in range(data.shape[1]):
                 if i == data.shape[0] - 1:
@@ -40,6 +41,9 @@ def func(city):
                     s = dataset_name_dict[city]
 
                     temp[2*i, j, 4] = s
+
+                    temp[2*i, j, 5] = cfg['dataset_info'][city]['mean']
+                    temp[2*i, j, 6] = cfg['dataset_info'][city]['std']
                     
                 else:
                     temp[i*2, j, 0] = data[i, j, 0] #speed
@@ -59,11 +63,17 @@ def func(city):
 
                     temp[2*i, j, 4] = s
                     temp[2*i+1, j, 4] = s
+
+                    temp[2*i, j, 5] = cfg['dataset_info'][city]['mean']
+                    temp[2*i+1, j, 5] = cfg['dataset_info'][city]['mean']
+
+                    temp[2*i, j, 6] = cfg['dataset_info'][city]['std']
+                    temp[2*i+1, j, 6] = cfg['dataset_info'][city]['std']
                 
             z += 2
         np.save('./Raw_Data/'+city+'/dataset_new.npy', temp)
     else:
-        temp = np.zeros((data.shape[0], data.shape[1], 5), dtype=np.float32)
+        temp = np.zeros((data.shape[0], data.shape[1], 7), dtype=np.float32)
         for i in range(data.shape[0]):
             for j in range(data.shape[1]):
                 temp[i, j, 0] = data[i, j, 0] #speed
@@ -74,11 +84,14 @@ def func(city):
                 temp[i, j, 3] = j
                 s = dataset_name_dict[city]
                 temp[i, j, 4] = s
+
+
+                temp[i, j, 5] = cfg['dataset_info'][city]['mean']
+                temp[i, j, 6] = cfg['dataset_info'][city]['std']
             z += 1
         np.save('./Raw_Data/'+city+'/dataset_new.npy', temp)
 
     data = np.load('./Raw_Data/'+city+'/dataset_new.npy')
     print(data.shape)
     print(data[1,3,:])
-
-func('CD')
+func('BAY')

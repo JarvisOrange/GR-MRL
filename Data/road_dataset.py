@@ -33,41 +33,29 @@ class RoadDataset(Dataset):
         return self.X.shape
 
     def __getitem__(self, index):
-        if self.flag == 'finetune':
-            pass
+        if self.flag == 'time_cluster' or \
+            self.flag == 'road_cluster' or \
+            self.flag == 'pretrain' or \
+            self.flag == 'road_cluster' or \
+            self.flag == 'rag':
 
-        if self.flag == 'time_cluster':
             x= self.X[index]
             x = torch.from_numpy(x).float()
             return x
 
-
-        if self.flag == 'road_cluster':
-            x= self.X[index]
-            x = torch.from_numpy(x).float()
-            return x
-            
-
-        if self.flag == 'pretrain':
-            x= self.X[index]
-            y =self.Y[index]
+        if self.flag =='source_train' or \
+            self.flag == 'target_train' or \
+            self.flag == 'test':
+             
+            x = self.X[index]
+            y = self.Y[index]
             x = torch.from_numpy(x).float()
             y = torch.from_numpy(y).float()
             return x, y
             
-        if self.flag == 'rag':
-            pass
 
         if self.flag =='try':
             pass
-
-        x_data = x_data.float()
-        y_data = y_data.float()
-        node_num = self.A_list[select_dataset].shape[0]
-        data_i = Data(node_num=node_num, x=x_data, y=y_data,means=self.means_list[select_dataset],stds = self.stds_list[select_dataset])
-        data_i.data_name = select_dataset
-        
-        return data_i
 
 
 class RoadDataProvider():
@@ -147,7 +135,7 @@ class RoadDataProvider():
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
-            self.X = np.zeros([X_num, his_num, 5], dtype=float)
+            self.X = np.zeros([X_num, his_num, 7], dtype=float)
 
             cur = 0
             for dataset in self.data_src_list:
@@ -207,7 +195,7 @@ class RoadDataProvider():
                     elif i < R_num_dict[dataset_name_dict[2]]:
                         temp_x += list(np.squeeze(self.X_road_cluster_2[i], dim=0))
                 temp_x = np.array(temp_x)
-                self.X_road_cluster_dict[k] = temp_x #[, B*l, 5]
+                self.X_road_cluster_dict[k] = temp_x #[, B*l, 7]
             
 
         if flag == 'rag':
@@ -238,13 +226,46 @@ class RoadDataProvider():
     
 
     def generate_dataloader(self):
-        bs = self.cfg['stage']['self.flag']['batch_size']
+        bs = self.cfg['flag']['self.flag']['batch_size']
         drop_last = self.cfg['drop_last']
         R_dataset = RoadDataset(self.flag, self.X, self.Y)
 
         dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
 
         return dataloader
+    
+    def generate_pretrain_dataloader(self):
+        bs = self.cfg['flag']['self.flag']['batch_size']
+        drop_last = self.cfg['drop_last']
+
+        train_ratio, val_ratio, test_ratio = self.cfg['flag']['pretrain']['train_val_test']
+
+        length = self.X.shape[0]
+        X_train = self.X[:int(0.7*length)]
+        X_val = self.X[int(0.7*length): int(0.8*length)]
+        X_test = self.X[int(0.8)*length:]
+        
+
+        indices = np.random.permutation(self.X_train.shape[0])
+        X_train_shuffle = self.X_train[indices]
+
+        indices = np.random.permutation(self.X_val.shape[0])
+        X_val_shuffle = self.X_train[indices]
+
+        indices = np.random.permutation(self.X_test.shape[0])
+        X_test_shuffle = self.X_test[indices]
+
+        R_train_dataset = RoadDataset(self.flag, X_train_shuffle)
+        R_val_dataset = RoadDataset(self.flag, X_val_shuffle)
+        R_test_dataset = RoadDataset(self.flag, X_test_shuffle)
+
+        train_dataloader = DataLoader(R_train_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
+
+        val_dataloader = DataLoader(R_val_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
+
+        test_dataloader = DataLoader(R_test_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
+
+        return train_dataloader, val_dataloader, test_dataloader
 
     def generate_road_cluster_dataloader(self):
         

@@ -37,30 +37,13 @@ class PositionalEncoding(nn.Module):
         """
 
         B, N, L_P, d = input.shape
+
         # temporal embedding
         index = index.contiguous().view(B*N,L_P,1)
         input = self.tem_pe(input.view(B*N, L_P, d), index=index)
         input = input.view(B, N, L_P, d)
+        
         # absolute positional embedding
         return input
-
-
-## test
-if __name__ == "__main__":
-    out_channel = 96
-    dropout = 0.1
-    pe =  PositionalEncoding(out_channel, dropout=dropout)
-    patches = torch.rand((5,224,2016// 12,96))
-    
-    position = torch.arange(228,228+2016,1)
-    position = position % 2016
-    position = position.repeat(5,224,1,1)
-    
-    pos_indices = torch.arange(0, 2016, 12)
-    position = position[:,:,:,pos_indices]
-    position = position // 12
-    
-    print(patches.shape, position.shape)
-    patches = pe(patches,position)
 
 

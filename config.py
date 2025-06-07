@@ -5,12 +5,16 @@ cfg = {
     
     'exp_tag': 0,
 
+    'device': 'cuda: 0',
 
-    'stage':  {
+
+
+    'flag':  {
         'pretrain': {
                 'batch_size': 4,  # [B, N, 288, 2]
-                'train_epochs': 1000,
+                'epoch': 1000,
                 'lr' : 0.0001,
+                'train_val_test':[0.7, 0.1, 0.2]
         },
         'source_train':{
             'batch_size': 16,
@@ -47,8 +51,8 @@ cfg = {
             'edges': 2694,
             'interval': 5,
             'time_step': 52116,
-            'mean': '61.7768',
-            'std':'9.2852',
+            'mean': 61.7768,
+            'std':9.2852,
             'start_time': '2017-01-01 00:00:00',
             'end_time': '2017-06-30 24:00:00'
         },
@@ -57,8 +61,8 @@ cfg = {
             'edges': 1120,
             'interval': 10,
             'time_step': 17280,
-            'mean': '29.0235',
-            'std':'9.662',
+            'mean': 29.0235,
+            'std':9.662,
             'start_time': '2018-01-01 00:00:00',
             'end_time': '2018-04-30 24:00:00'
         },
@@ -67,12 +71,14 @@ cfg = {
             'edges': 4845,
             'interval': 10,
             'time_step': 17280,
-            'mean': '31.0092',
-            'std':'10.9694',
+            'mean': 31.0092,
+            'std':10.9694,
             'start_time': '2018-01-01 00:00:00',
             'end_time': '2018-04-30 24:00:00'
         }
     },
+
+    
 
     
 
@@ -86,7 +92,6 @@ cfg = {
 
     'dataset_src_trg': 'B-L-C_S',
 
-    
     'laplacian_dim': 64,
 
     'road_k': 16,
@@ -99,10 +104,22 @@ cfg = {
     'pre_num': 12, # 预测时间步数
 
     'target_day': 3,
+
+
+    'TSFormer': {
+        'patch_size':12,
+        'in_channel':1,
+        'out_channel':128, #输出的维度
+
+        'dropout':0.1,
+        'window_size': 288,
+        'mask_size':24,
+        'mask_ratio':0.75,
+        'n_layer':4,
+    },
     
 
     # 训练设置
-    'device': 'cuda',
 
     'drop_last': True,
 
@@ -116,10 +133,7 @@ cfg = {
     'inner_dis_itr': 5000 * 4,
     'inner_gen_itr': 1000,
 
-    'epoch_pref': 1,
-
-    'epoch_disent': 600, # 解耦学习轮数
-
+ 
     # 域分类损失权重
     'disc_weight': 100,
     # rank loss 的权重

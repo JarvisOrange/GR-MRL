@@ -13,6 +13,8 @@ from torch.utils.data import Dataset
 import random
 import torch.nn as nn
 
+
+
 def get_local_time():
     """
     获取时间
@@ -136,6 +138,27 @@ def kmeans(X, n_clusters, max_iter=100, tol=1e-4, device='cuda'):
         centers = new_centers
 
     return labels.cpu(), centers.cpu()
+
+
+def calc_metric(pred, y, flag = "train"):
+    # input B * L * N
+
+    B, L, N = pred.shape
+    pred = pred.transpose(B, N, -1).reshape(-1,L) # (B * N, L)
+    y = y.transpose(B,N,-1).reshape(-1,L)
+    MSE = torch.mean((pred - y)**2, dim = 0)
+    RMSE = torch.sqrt(MSE)
+    MAE = torch.mean(torch.abs(pred - y), dim = 0)
+    MAPE = torch.mean(torch.abs(pred - y) / y, dim = 0)
+    return MSE, RMSE, MAE, MAPE
+
+
+def unnorm(x ,means, stds):
+    B, LL, N = x.shape
+    means = means.expand(B, LL, N)
+    stds = stds.expand(B, LL, N)
+    return x * stds + means
+
     
 
 class Feq_Loss(nn.Module):
