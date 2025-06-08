@@ -2,9 +2,63 @@ import os
 import torch
 from GR_MRL import GR_MRL
 from config import cfg
-from utils import kmeans_pytorch
+from utils import *
+from Data.road_dataset import *
+from Model.TSFormer.TSmodel import *
 
 def road_cluster(dataset_src, logger=None):
+
     device = cfg['device']
 
+    temp, _ = cfg['dataset_src_trg'].split('_')
+    dataset_src = ''.join(temp[0].split('-'))
+    model_path = './Save/my_pretrain_model/{}/best_model.pt'.format(dataset_src)
+
+    if not os.exist(model_path):
+        logger.info('please pretrain time patch encoder first.')
+        return 
+    
+    provider = RoadDataProvider(cfg, flag='road_cluster', logger=logger)
+    dataloader_list = provider.generate_road_cluster_dataloader()
+
+    model = TSFormer(cfg['TSFromer']).to(device)
+    model.mode = 'test'
+
+    model.load_state_dict(torch.load(model_path))
+
+    K = len(dataloader_list)
+    dim_embed = cfg['TSFormer']['out_channel']
+
+    road_pattern = torch.zeros([K, dim_embed]).float().cpu()
+
+    for k, dataloader in enumerate(dataloader_list):
+        num_embed = dataloader.dataset.get_x_num()
+
+        embed_pool = torch.zeros([num_embed, dim_embed]).float().cpu()
+
+        temp = 0
+        for batch in tqdm(dataloader):
+
+            x = batch.permute(0,1,3,2) # B L*N l_his 7 - > B L*N 7 l_his
+            
+            H = model(x)
+
+            B, L_N, C, L = x.shape
+
+            H = H.reshape(B * L_N * L, -1) # N_time_patch * dim
+
+            logger.info('corresbonding H shape : {}'.format(H.shape))
+
+            embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu()
+
+            temp = x.shape[0] + temp
+
+        embed = embed_pool.mean(dim=0)
+        road_pattern[k,:] = embed 
+    
+
+    torch.save(road_pattern,'./Save/road_embed/{}/embed_{}.pt'.format(dataset_src, str(K)))
+
+    
+    
     

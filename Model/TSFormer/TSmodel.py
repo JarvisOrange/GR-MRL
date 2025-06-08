@@ -57,7 +57,7 @@ nn
             torch.Tensor: the groundtruth of the masked tokens. Shape [B, L * P * r, N]
             dict: data for plotting.
         """
-        # input : [B, N, 5, L]
+        # input : [B, N, 7, L]
         B, N, C, L = input.shape
         position = input[:,:,self.position_feature,:].unsqueeze(2)
         pos_indices = torch.arange(0, L, self.patch_size)
@@ -176,7 +176,7 @@ nn
 
     def forward(self, input_data):
         """feed forward of the TSFormer.
-        TSFormer has two modes: the pre-training mode and the forecasting model, which are used in the pre-training stage and the forecasting stage, respectively.
+        TSFormer has two modes: the pre-training mode and the test mode, which are used in the pre-training stage and the forecasting stage, respectively.
 
         Args:
             input_data (torch.Tensor): very long-term historical time series with shape B, N, 1, L * P.
@@ -189,7 +189,7 @@ nn
             forecasting: 
                 torch.Tensor: the output of TSFormer of the encoder with shape [B, N, L, d].
         """
-        if self.mode == 'Pretrain':
+        if self.mode == 'pain':
             return self._forward_pretrain(input_data)
-        else:
+        elif self.mode == 'test':
             return self._inference(input_data)

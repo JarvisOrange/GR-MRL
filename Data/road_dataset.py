@@ -22,15 +22,17 @@ dataset_name_dict = {
     'S': 'SZ',
 }
 class RoadDataset(Dataset):
-    def __init__(self, flag, X, Y=None):
+    def __init__(self, flag, X, Y=None, device=None):
         super(RoadDataset,self).__init__()
         self.X = X
         self.Y = Y
         self.flag = flag
 
+        self.device = device
+
 
     def __len__(self):
-        return self.X.shape
+        return self.X.shape[0]
 
     def __getitem__(self, index):
         if self.flag == 'time_cluster' or \
@@ -49,14 +51,16 @@ class RoadDataset(Dataset):
              
             x = self.X[index]
             y = self.Y[index]
-            x = torch.from_numpy(x).float()
-            y = torch.from_numpy(y).float()
+            x = torch.from_numpy(x).float().to(self.device)
+            y = torch.from_numpy(y).float().to(self.device)
             return x, y
             
 
         if self.flag =='try':
             pass
-
+        
+    def get_x_num(self):
+        return self.X.shape[0]
 
 class RoadDataProvider():
     def __init__(self, cfg, flag, logger=None):
@@ -170,7 +174,9 @@ class RoadDataProvider():
     
                 cur += R_num_dict[dataset.name]
 
-            cluster_label = kmeans_pytorch(self.Road_E, self.cfg['road_k']) #[label_2, label_10..., label_1]
+            cluster_label,_ = kmeans_pytorch(self.Road_E, self.cfg['road_k']) #[label_2, label_10..., label_1]
+
+            self.road_cluster_label = cluster_label
 
             cluster_label_node_dict = {}
             self.X_road_cluster_dict = {}
@@ -228,8 +234,11 @@ class RoadDataProvider():
 
     def generate_dataloader(self):
         bs = self.cfg['flag']['self.flag']['batch_size']
-        drop_last = self.cfg['drop_last']
-        R_dataset = RoadDataset(self.flag, self.X, self.Y)
+        if self.flag == 'time_cluster': 
+            drop_last = False
+        else:
+            drop_last = self.cfg['drop_last']
+        R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
 
         dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
 
@@ -242,9 +251,9 @@ class RoadDataProvider():
         train_ratio, val_ratio, test_ratio = self.cfg['flag']['pretrain']['train_val_test']
 
         length = self.X.shape[0]
-        X_train = self.X[:int(0.7*length)]
-        X_val = self.X[int(0.7*length): int(0.8*length)]
-        X_test = self.X[int(0.8)*length:]
+        X_train = self.X[ : int(train_ratio*length)]
+        X_val = self.X[int( train_ratio*length) : int((train_ratio+val_ratio)*length)]
+        X_test = self.X[int((1-test_ratio)*length) : ]
         
 
         indices = np.random.permutation(self.X_train.shape[0])
@@ -256,9 +265,9 @@ class RoadDataProvider():
         indices = np.random.permutation(self.X_test.shape[0])
         X_test_shuffle = X_test[indices]
 
-        R_train_dataset = RoadDataset(self.flag, X_train_shuffle)
-        R_val_dataset = RoadDataset(self.flag, X_val_shuffle)
-        R_test_dataset = RoadDataset(self.flag, X_test_shuffle)
+        R_train_dataset = RoadDataset(self.flag, X_train_shuffle, device = self.cfg['device'])
+        R_val_dataset = RoadDataset(self.flag, X_val_shuffle, device = self.cfg['device'])
+        R_test_dataset = RoadDataset(self.flag, X_test_shuffle, device = self.cfg['device'])
 
         train_dataloader = DataLoader(R_train_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
 
@@ -272,13 +281,17 @@ class RoadDataProvider():
         
         assert self.flag == 'road_cluster', 'this provider is not for road clustering'
         bs = self.cfg['pretrain']['batch_size']
-        drop_last = self.cfg['drop_last']
+        drop_last = False
 
         dataloader_list = []
 
         for k in self.X_road_cluster_dict.keys():
-            R_dataset = RoadDataset(self.flag, self.X_road_cluster_dict[k])
+            R_dataset = RoadDataset(self.flag, self.X_road_cluster_dict[k], device = self.cfg['device'])
             dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
             dataloader_list.append(dataloader)
 
         return dataloader_list
+
+
+    def get_road_cluster_label(self):
+        return self.road_cluster_label

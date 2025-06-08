@@ -22,7 +22,7 @@ def pretrain(logger=None):
     
     temp, _ = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp[0].split('-'))
-    model_path = Path('./save/my_pretrain_model/{}/'.format(dataset_src))
+    model_path = './Save/my_pretrain_model/{}/'.format(dataset_src)
     ensure_dir(model_path)
     
     provider = RoadDataProvider(cfg, flag='pretrain',logger=logger)

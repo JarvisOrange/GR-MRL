@@ -110,7 +110,7 @@ def get_optimizer(model, args):
     
 
 
-def kmeans_pytorch(X, n_clusters, max_iter=100, tol=1e-4, device='cuda'):
+def kmeans_pytorch(X, n_clusters, max_iter=100, tol=1e-4, device=None):
     """
     PyTorch 实现的 K-means 聚类（GPU 版本）
     """

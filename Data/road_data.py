@@ -167,15 +167,17 @@ class RoadData():
 
         if self.y is None:
             self._logger.warning("y is None, return x only")
+            
+
 
         if self.flag == 'pretrain':
-            # x : [B*N, l_his， 7]
+            # x : [B * N, l_his， 7]
             x = self.x.reshape(-1, self.pre_num, 7)
 
             return x
         
         if self.flag == 'time_cluster':
-            # x : [N, B, l_his， 7]
+            # x : [B * N, l_his， 7]
             x = self.x.reshape(-1, self.pre_num, 7)
             
             return x
@@ -193,8 +195,8 @@ class RoadData():
             return x
         
         if self.flag == 'source_train' or self.flag == 'target_train' or self.flag == 'test':
-            # x : [B*N, l_his， 7]
-            # y : [B*N, l_pre] 
+            # x : [N * B, l_his， 7]
+            # y : [N * B, l_pre] 
             x = self.x.reshape(-1, self.pre_num, 7)
             y = self.y.reshape(-1, self.his_num)
 

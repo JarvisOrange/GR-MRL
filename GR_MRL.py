@@ -60,7 +60,7 @@ class LoraModel():
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         model_name = "LLM/Meta-Llama-3-8B"  # Replace with the correct model name
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float16)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float32)
 
         # Configure LoRA
         lora_config = LoraConfig(
