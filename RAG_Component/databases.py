@@ -9,8 +9,16 @@ from config import cfg
 
 
 class VectorDatabase():
-    def __init__(self, vectors):
+    def __init__(self, vectors, cfg):
         self.vectors = vectors.numpy()
+
+    def load_json(self,cfg):
+        temp, _= cfg['dataset_src_trg'].split('_')
+        dataset_src = ''.join(temp.split('-'))
+        path = './Save/retrieve_result/{}/result.json'.format(dataset_src)
+        
+        with open(path, 'r') as f:
+             self.related_dict = json.load(f)
 
     
     #求向量的余弦相似度，传入两个向量和一个embedding模型，返回一个相似度
@@ -22,3 +30,11 @@ class VectorDatabase():
         result = np.array([self.get_similarity(query, vector) for vector in self.vectors])
         return np.array(self.vectors)[result.argsort()[-k:][::-1]].tolist()
     
+    def query_related(self, query, k):
+        result = np.array([self.get_similarity(query, vector) for vector in self.vectors])
+        temp_list =  np.array(self.vectors)[result.argsort()[-k:][::-1]].tolist()
+
+        res = []
+        for i in temp_list:
+            res += self.related_dict[i]
+        return res

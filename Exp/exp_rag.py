@@ -10,14 +10,7 @@ from RAG_Component.databases import *
 
 
 
-def exp_rag(dataset_src, logger=None):
-
-    # may retrieve other city time patch
-    def get_related_index(retrieve_result, dataset_info_list, index_split_based_city):
-        
-
-        return result
-
+def exp_rag(logger=None):
 
     device = cfg['device']
 
@@ -28,12 +21,15 @@ def exp_rag(dataset_src, logger=None):
     dataloader = provider.generate_dataloader()
 
     embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
-    info_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
+    info_path = './Save/dataset_info/{}/info.json'.format(dataset_src)
 
     if os.exist(embed_path):
         time_embed_pool = torch.load(embed_path).to(device)
-        with open(info_path, 'r') as f:
-            dataset_info_dict = json.load(f)
+    else:
+        logger.info('please')
+
+    with open(info_path, 'r') as f:
+        dataset_info_dict = json.load(f)
 
     dataset_info_list = [dataset_info_dict[k] for k in dataset_info_dict.keys()]
     length = len(dataset_info_dict)
@@ -45,13 +41,10 @@ def exp_rag(dataset_src, logger=None):
 
     database = VectorDatabase(time_embed_pool)
 
-    source_datasets = dataset_src.split('-')
-
     # two points split three city data
     index_split_based_city = \
         [0, start_num_list[1], start_num_list[2]]
 
-    
     retrieve_dict = {}
 
     top_k = cfg['retrieve_k']
@@ -63,9 +56,8 @@ def exp_rag(dataset_src, logger=None):
 
         result = [x for x in result if x != index] # delete self
 
-        retrieve_dict[index] = get_related_index(result, dataset_info_list, index_split_based_city)
-
-        retrieve_result = []
+        # may retrieve other city time patch
+        related_dict = []
         for res in result:
             if res < index_split_based_city[1]: # city 0
                 city_flag = 0
@@ -94,7 +86,9 @@ def exp_rag(dataset_src, logger=None):
                  if res + (neighbor - road_id) + road_num < end_num] 
         result += time_related_index + spatial_related_index
 
-    path = './Save/retrieve_Result/{}/result.json'.format(dataset_src)
+        related_dict[res] = result
+
+    path = './Save/retrieve_result/{}/result.json'.format(dataset_src)
 
     with open(path, 'w') as f1:
         json.dump(retrieve_dict, f, indent=4)

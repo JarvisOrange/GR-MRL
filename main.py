@@ -6,6 +6,10 @@ from argparse import ArgumentParser
 from config import cfg
 from GR_MRL import GR_MRL
 from utils import *
+from Exp.exp_pretrain import *
+from Exp.exp_rag import *
+from Exp.exp_road_cluster import *
+from Exp.exp_time_cluster import *
 
 
 
@@ -37,22 +41,22 @@ def main():
     model.to(cfg['device'])
 
     #stage 0:  preprocess data and get dataset 
-    source_dataset = RoadTimeDataset(cfg, _logger)
-    finetune_dataset = RoadTimeDataset(cfg, _logger)
-    test_dataset = RoadTimeDataset(cfg, _logger)
+    
 
 
     
     # #stage 1: pretrain time patch encoder or get pretrain time patch encoder
-    # time_patch_encoder = TimePatchEncoder()
-    # time_patch_encoder.train()
+    exp_pretrain(logger=_logger)
+
     
     # #stage 2: cluster time patch and node embedding
-    # cluster_time_embed()
-    # cluster_node_embed()
-    
+    exp_time_cluster(logger=_logger)
+    exp_road_cluster(logger=_logger)
+
+
     # #stage 3: build time patch database
-    # make_time_patch_database()
+    exp_rag(logger=_logger)
+    
 
     # #stage 4: finetune model
     # generate_prompt()

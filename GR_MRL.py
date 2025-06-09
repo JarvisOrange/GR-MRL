@@ -14,25 +14,7 @@ class GR_MRL(nn.Module):
         # Custom node embedding logic
         pass
 
-    
 
-    def time_series_embedding(self, input_ids):
-        # Custom input embedding logic
-        pass
-
-    def position_embedding(self, input_ids):
-        pass
-
-    def text_embedding(self, input_ids):
-        pass
-        
-
-    def temporal_state_embedding(self, input_ids):
-        pass
-
-
-    def forward(self, input_ids, attention_mask=None):
-        pass
 
 
 class PositionEmbedding(nn.Module):
