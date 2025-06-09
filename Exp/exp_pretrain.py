@@ -11,17 +11,17 @@ import sys
 from Model import TSFormer  
 sys.path.append('./Model/TSFormer')
 
-from Data.road_dataset import *
+from Data.road_data_provider import *
 
 
 set_seed()
 
-def pretrain(logger=None):
+def exp_pretrain(logger=None):
 
     device = cfg['device']
     
     temp, _ = cfg['dataset_src_trg'].split('_')
-    dataset_src = ''.join(temp[0].split('-'))
+    dataset_src = ''.join(temp.split('-'))
     model_path = './Save/my_pretrain_model/{}/'.format(dataset_src)
     ensure_dir(model_path)
     

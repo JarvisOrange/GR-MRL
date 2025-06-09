@@ -1,279 +1,108 @@
-from Data_Provider.data_factory import data_provider
-from Exp.exp_basic import Exp_basic
-from utils.tools import EarlyStopping, adjust_learning_rate, visual
-import torch
-import torch.nn as nn
-from torch import optim
 import os
-import time
-import warnings
-import numpy as np
-from tqdm import tqdm
-import shutil
-from utils import Feq_Loss
-from GR_MRL.logger import logger
+import torch
+from GR_MRL import GR_MRL
+from config import cfg
+from utils import kmeans_pytorch
+from Data.road_data_provider import *
+from Model.TSFormer.TSmodel import *
+from RAG_Component.databases import *
 
-warnings.filterwarnings("ignore")
 
-class Exp_finetune(Exp_basic):
-    def __init__(self, args):
-        # 1. set args, model_dict, device into self
-        # 2. build model
-        super(Exp_finetune, self).__init__(args)
+
+
+def exp_rag(dataset_src, logger=None):
+
+    # may retrieve other city time patch
+    def get_related_index(retrieve_result, dataset_info_list, index_split_based_city):
         
 
-    def _build_model(self):
-        if getattr(self, "model", None) is not None:
-            raise ValueError("Model already exists!")
+        return result
 
-        # Try to save C_t into args
-        train_data, train_loader = self._get_data(flag="train")
-        batch_x, batch_y, batch_x_mark, batch_y_mark = next(iter(train_loader))
-        self.args.C_t = batch_x_mark.shape[2]
 
-        # Build model
-        model = (
-            self.model_dict[self.args.model].Model(self.args).float()
-        )  # Feed `args`
-        print_params(model)
+    device = cfg['device']
 
-        return model
+    temp, _= cfg['dataset_src_trg'].split('_')
+    dataset_src = ''.join(temp.split('-'))
 
-    def _get_data(self, flag):
-        data_set, data_loader = data_provider(self.args, flag)
-        return data_set, data_loader
+    provider = RoadDataProvider(cfg, flag='rag', logger=logger)
+    dataloader = provider.generate_dataloader()
 
-    def _select_optimizer(self):
-        model_optim = getattr(optim, self.args.dft_optim)(
-            self.model.parameters(),
-            lr=self.args.dft_learning_rate,
-            weight_decay=self.args.dft_weight_decay,
-        )
-        return model_optim
+    embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
+    info_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
 
-    def _select_criterion(self):
-        if self.args.loss == "feq":
-            criterion = Feq_Loss()
-        else:
-            criterion = nn.MSELoss()
-        return criterion
+    if os.exist(embed_path):
+        time_embed_pool = torch.load(embed_path).to(device)
+        with open(info_path, 'r') as f:
+            dataset_info_dict = json.load(f)
 
-    def train(self, use_tqdm=False):
-        print(
-            f">>>>> start training (long-term forecasting: {self.args.pred_len}) : {self.args.setting}>>>>>"
-        )
+    dataset_info_list = [dataset_info_dict[k] for k in dataset_info_dict.keys()]
+    length = len(dataset_info_dict)
 
-        # Load the model (if we have already trained it with sft)
-        if self.args.enable_supervised_finetuning:
-            checkpoint = torch.load(
-                os.path.join("./checkpoints/sft_" + self.args.setting, "checkpoint.pth")
-            )
-            # Get a list of keys related to the output layer to delete
-            keys_related_to_output_layer = [
-                k for k in checkpoint.keys() if "output_layer" in k
-            ]
-            for key in keys_related_to_output_layer:
-                del checkpoint[key]
+    road_num_list = [dataset_info_list[i]['road_num'] for i in range(length)]
+    start_num_list = [dataset_info_list[i]['start_num'] for i in range(length)]
+    end_num_list = [dataset_info_list[i]['end_num'] for i in range(length)]
+    neighbor_list = [dataset_info_list[i]['adj'] for i in range(length)]
 
-            # Load the modified state dict
-            self.model.load_state_dict(checkpoint, strict=False)
-            print("### Successfully loaded the model trained with sft ###")
+    database = VectorDatabase(time_embed_pool)
 
-        # Get data
-        train_data, train_loader = self._get_data(flag="train")
-        vali_data, vali_loader = self._get_data(flag="val")
-        test_data, test_loader = self._get_data(flag="test")
-        assert len(train_loader) > 0, "The train_loader is empty!"
-        assert len(vali_loader) > 0, "The vali_loader is empty!"
-        assert len(test_loader) > 0, "The test_loader is empty!"
+    source_datasets = dataset_src.split('-')
 
-        path = os.path.join(
-            self.args.checkpoints, self.args.setting
-        )  # `setting` is just a path storing config
-        if not os.path.exists(path):
-            os.makedirs(path)
+    # two points split three city data
+    index_split_based_city = \
+        [0, start_num_list[1], start_num_list[2]]
 
-        start_time = time.time()
-        time_now = time.time()
+    
+    retrieve_dict = {}
 
-        train_steps = len(train_loader)
-        early_stopping = EarlyStopping(patience=self.args.patience, verbose=True)
+    top_k = cfg['retrieve_k']
+    
+    for index in range(time_embed_pool.shape[0]):
+        v = time_embed_pool[index, :]
 
-        model_optim = self._select_optimizer()
-        criterion = self._select_criterion()
+        result = database.query(v, top_k)
 
-        # Automatic Mixed Precision (some op. are fp32, some are fp16)
-        scaler = torch.cuda.amp.GradScaler(enabled=self.args.use_amp)  # type: ignore
+        result = [x for x in result if x != index] # delete self
 
-        best_test_loss, best_test_mae, best_epoch = (
-            np.inf,
-            np.inf,
-            0,
-        )  # for capturing the best test loss during training
-        for epoch in range(self.args.dft_train_epochs):
-            iter_count = 0
-            train_loss = []
+        retrieve_dict[index] = get_related_index(result, dataset_info_list, index_split_based_city)
 
-            self.model.train()
-            epoch_time = time.time()
+        retrieve_result = []
+        for res in result:
+            if res < index_split_based_city[1]: # city 0
+                city_flag = 0
+            elif res < index_split_based_city[2]: # city 1
+                city_flag = 1
+            else:                                  # city 2
+                city_flag = 2
 
-            # Change from linear probing to fine-tuning in the middle of training
-            # (Only happens in the downstream task, not in the supervised fine-tuning)
-            if (
-                self.args.ft_mode == "lp_ft"
-                and epoch == self.args.dft_train_epochs // 2
-            ):
-                self.model.linear_probe_to_fine_tuning()
-                print_params(self.model)
+            road_num = road_num_list[city_flag]
+            start_num = start_num_list[city_flag]
+            end_num = end_num_list[city_flag]
+            neighbor_dict = neighbor_list[city_flag]
 
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in (
-                tqdm(enumerate(train_loader), total=len(train_loader))
-                if use_tqdm
-                else enumerate(train_loader)
-            ):
-                batch_y_shape = batch_y.shape
-                iter_count += 1
-                model_optim.zero_grad()
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
+            # next time step's self feature
+            if res + road_num >= end_num: 
+                continue
 
-                # encoder - decoder
-                with torch.cuda.amp.autocast(enabled=self.args.use_amp):  # type: ignore
-                    outputs = self.model(
-                        batch_x, batch_x_mark, None, batch_y_mark
-                    )  # embedding + encoder + decoder
+            time_related_index = [res + road_num] 
 
-                    # M: multivariate predict multivariate, S: univariate predict univariate, MS: multivariate predict univariate
-                    f_dim = -1 if self.args.features == "MS" else 0
-                    outputs = outputs[:, -self.args.pred_len :, f_dim:]
-                    batch_y = batch_y[:, -self.args.pred_len :, f_dim:]
-                    assert (
-                        batch_y_shape == batch_y.shape
-                    ), f"batch_y_shape: {batch_y_shape}, batch_y.shape: {batch_y.shape}"
-                    loss = criterion(outputs, batch_y)
-                    train_loss.append(loss.item())
+            # next time step's neighbor  
+            road_id = (res - start_num) % road_num
+            
+            spatial_related_index = \
+                [res + (neighbor - road_id) + road_num  \
+                 for neighbor in neighbor_dict[road_id] \
+                 if res + (neighbor - road_id) + road_num < end_num] 
+        result += time_related_index + spatial_related_index
 
-                # Show loss
-                if (i + 1) % 100 == 0:
-                    print(
-                        "\titers: {0}, epoch: {1} | loss: {2:.7f}".format(
-                            i + 1, epoch + 1, loss.item()
-                        )
-                    )
-                    speed = (time.time() - time_now) / iter_count
-                    left_time = speed * (
-                        (self.args.dft_train_epochs - epoch) * train_steps - i
-                    )
-                    print(
-                        "\tspeed: {:.4f}s/iter; left time: {:.4f}s".format(
-                            speed, left_time
-                        )
-                    )
-                    iter_count = 0
-                    time_now = time.time()
+    path = './Save/retrieve_Result/{}/result.json'.format(dataset_src)
 
-                # Backward
-                scaler.scale(loss).backward()  # type: ignore
-                scaler.step(model_optim)
-                scaler.update()
+    with open(path, 'w') as f1:
+        json.dump(retrieve_dict, f, indent=4)
+        
 
-            print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
-            train_loss = np.average(train_loss)
-            # At the end of each epoch, we evaluate the validation set and test set
-            print(">>>>> start validation >>>>>")
-            vali_loss, vali_mae = self.get_metrics(vali_loader)
-            print(">>>>> start testing >>>>>")
-            test_loss, test_mae = self.get_metrics(test_loader)
-            if test_loss < best_test_loss:
-                best_test_loss = test_loss
-                best_test_mae = test_mae
-                best_epoch = epoch + 1
+    
 
-            print(
-                "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                    epoch + 1, train_steps, train_loss, vali_loss, test_loss
-                )
-            )
-            early_stopping(vali_loss, self.model, path)
-            if early_stopping.early_stop:
-                print("Early stopping")
-                break
 
-            adjust_learning_rate(
-                model_optim, epoch + 1, self.args.dft_learning_rate, self.args.dft_lradj
-            )
-            print("------------------------------------------------------------------")
+        
 
-        best_model_path = path + "/" + "checkpoint.pth"
-        self.model.load_state_dict(torch.load(best_model_path))
-        # shutil.rmtree(path, ignore_errors=True)  # delete the checkpoint folder
-
-        metrics = {}  # loss = mse
-        # print("### Calculating metrics for train ###")
-        # metrics["train_loss"], metrics["train_mae"] = self.get_metrics(train_loader)
-        # print("### Calculating metrics for vali ###")
-        # metrics["val_loss"], metrics["val_mae"] = self.get_metrics(vali_loader)
-        # print("### Calculating metrics for test ###")
-        # metrics["test_loss"], metrics["test_mae"] = self.get_metrics(test_loader)
-        metrics["best_test_loss"], metrics["best_test_mae"], metrics["best_epoch"] = (
-            best_test_loss,
-            best_test_mae,
-            best_epoch,
-        )
-        print("===============================")
-        print(metrics)
-        print("===============================")
-
-        end_time = time.time()
-        self.spent_time = end_time - start_time
-
-        return metrics
-
-    def get_metrics(self, data_loader, use_tqdm=False):
-        total_mse = 0
-        total_mae = 0
-        total_samples = 0
-
-        self.model.eval()
-        with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in (
-                tqdm(enumerate(data_loader), total=len(data_loader))
-                if use_tqdm
-                else enumerate(data_loader)
-            ):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len :, :]).float()
-                dec_inp = (
-                    torch.cat([batch_y[:, : self.args.label_len, :], dec_inp], dim=1)
-                    .float()
-                    .to(self.device)
-                )
-                # encoder - decoder
-                with torch.cuda.amp.autocast(enabled=self.args.use_amp):  # type: ignore
-                    outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                f_dim = -1 if self.args.features == "MS" else 0
-                outputs = outputs[:, -self.args.pred_len :, f_dim:]
-                batch_y = batch_y[:, -self.args.pred_len :, f_dim:]
-                pred = outputs.detach()
-                true = batch_y.detach()
-
-                batch_mse = torch.mean((pred - true) ** 2).item()
-                batch_mae = torch.mean(torch.abs(pred - true)).item()
-
-                total_mse += batch_mse * len(batch_x)
-                total_mae += batch_mae * len(batch_x)
-                total_samples += len(batch_x)
-
-        mse = total_mse / total_samples
-        mae = total_mae / total_samples
-
-        return mse, mae
+   

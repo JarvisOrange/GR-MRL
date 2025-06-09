@@ -159,6 +159,21 @@ def unnorm(x ,means, stds):
     stds = stds.expand(B, LL, N)
     return x * stds + means
 
+def adj_to_dict(adj):
+    #!!! CD SZ may have weight which is not 1 or 0
+    d = {}
+    l1, l2 = adj.shape
+    adj = adj.to_list()
+
+    for i in range(l1):
+        for j in range(l2):
+            if adj[i][j] != 0:
+                if d[i] == None: 
+                    d[i] = [j]
+                else: 
+                    d[i] += d[i] + [j]
+    return d
+                
     
 
 class Feq_Loss(nn.Module):

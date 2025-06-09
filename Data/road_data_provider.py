@@ -2,6 +2,7 @@ from torch.utils.data import Data, Dataset, DataLoader
 import os
 import numpy as np
 import pandas as pd
+import json
 from utils import *
 
 from road_data import RoadData
@@ -15,12 +16,7 @@ from road_data import RoadData
 # finetune dataset(test)
 # try flag try
 
-dataset_name_dict = {
-    "B": 'BAY',
-    "L": 'LA',
-    'C': 'CD',
-    'S': 'SZ',
-}
+
 class RoadDataset(Dataset):
     def __init__(self, flag, X, Y=None, device=None):
         super(RoadDataset,self).__init__()
@@ -61,6 +57,8 @@ class RoadDataset(Dataset):
         
     def get_x_num(self):
         return self.X.shape[0]
+    
+
 
 class RoadDataProvider():
     def __init__(self, cfg, flag, logger=None):
@@ -73,8 +71,8 @@ class RoadDataProvider():
         self.source_data, self.target_data = cfg['target_data'].split('_')
         self.source_data = self.source_data.split('-')
 
-        self.target_data = dataset_name_dict[self.target_data]
-        self.source_data = [dataset_name_dict[n] for n in self.source_data]
+        self.target_data = self.target_data
+        self.source_data = [n for n in self.source_data]
 
         if flag == 'source_train' or flag == 'target_train' or flag == 'test':
             self.data_list = [RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) for i in range(3)]
@@ -148,6 +146,8 @@ class RoadDataProvider():
                 self.X[cur:cur + X_num_dict[dataset.name], :] = x
 
                 cur += X_num_dict[dataset.name]
+
+            X_num_dict
         
         if flag == 'road_cluster':
             ### road
@@ -206,27 +206,32 @@ class RoadDataProvider():
             
 
         if flag == 'rag':
-            self.data_src_list = [RoadData(cfg, self.source_data[i], flag='pretrain', logger=logger) for i in range(3)]
+            ### time cluster task have get the dataset and transfer into embed
+            ### this dataset is to get the dataset info and save into json
+            self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], flag='rag', logger=logger) for i in range(3)]
 
-            X_num = 0, X_num_dict = {}
+            dataset_info_dict = {}
         
             his_num, pre_num, interval = self.data_src_list[0].get_data_info()
-            
-            for dataset in self.data_src_list:
-                temp = dataset.get_data_num()
-                X_num += temp
-                X_num_dict[dataset.name] = temp
-                
-            self.X = np.zeros([X_num, his_num], dtype=float)
-
 
             cur = 0
             for dataset in self.data_src_list:
-                x = dataset.get_data()
-                
-                self.X[cur:cur + X_num_dict[dataset.name], :] = x
+                data_num = dataset.get_data_num()
+                road_num = dataset.get_road_num()
 
-                cur += dataset.get_data_num()
+                dataset_info_dict['name'] = {}
+                dataset_info_dict['name']['data_num'] = data_num * road_num
+                dataset_info_dict['name']['road_num'] = road_num
+                dataset_info_dict['name']['data_start_num'] = cur
+                dataset_info_dict['name']['data_end_num'] = cur + data_num * road_num
+                dataset_info_dict['name']['adj'] = adj_to_dict(dataset.get_adj()) 
+
+                cur += cur + data_num * road_num
+
+            json_path = '/Save/dataset_info/{}/info.json'.format(self.source_data)
+            with open(json_path, 'w') as f:
+                json.dump(dataset_info_dict, f, indent=4)
+        
 
         if flag =='try':
             pass
@@ -234,15 +239,17 @@ class RoadDataProvider():
 
     def generate_dataloader(self):
         bs = self.cfg['flag']['self.flag']['batch_size']
-        if self.flag == 'time_cluster': 
+        if self.flag == 'time_cluster' or self.flag == 'rag': 
             drop_last = False
+            shuffle = False
         else:
             drop_last = self.cfg['drop_last']
         R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
 
-        dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
+        dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = shuffle, drop_last=drop_last)
 
         return dataloader
+    
     
     def generate_pretrain_dataloader(self):
         bs = self.cfg['flag']['self.flag']['batch_size']

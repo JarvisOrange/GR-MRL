@@ -3,18 +3,18 @@ import torch
 from GR_MRL import GR_MRL
 from config import cfg
 from utils import kmeans_pytorch
-from Data.road_dataset import *
+from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
 import copy
 
 
-def time_cluster(dataset_src, logger=None):
+def exp_time_cluster(dataset_src, logger=None):
     device = cfg['device']
 
     temp, _ = cfg['dataset_src_trg'].split('_')
-    dataset_src = ''.join(temp[0].split('-'))
+    dataset_src = ''.join(temp.split('-'))
 
-    embed_path = './Save/time_embed/{}/meb.pt'.format(dataset_src)
+    embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
 
     if os.exist(embed_path):
         time_embed_pool = torch.load(embed_path).to(device)
@@ -42,28 +42,29 @@ def time_cluster(dataset_src, logger=None):
         num_embed = dataloader.dataset.get_x_num()
         dim_embed = cfg['TSFormer']['out_channel']
 
-        time_embed_pool  = torch.zeros([num_embed, dim_embed]).float().cpu()
+
+        time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
 
         temp = 0
         for batch in tqdm(dataloader):
 
-            x = batch.permute(0,1,3,2) # B L*N l_his 7 - > B L*N 7 l_his
+            x = batch.permute(0,1,3,2) # B N l_his 7 - > B N 7 l_his
             
             H = model(x)
 
-            B, L_N, C, L = x.shape
+            B, N, C, L = x.shape
 
-            H = H.reshape(B * L_N * L, -1) # N_time_patch * dim
+            H = H.reshape(B * N * L, -1) # N_time_patch * dim
 
             logger.info('corresbonding H shape : {}'.format(H.shape))
 
-            time_embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu()
+            time_embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu().numpy()
 
             temp = x.shape[0] + temp
         
         logger.info("{} emb_pool shape : {}".format(dataset_src, time_embed_pool.shape))
 
-        torch.save(time_embed_pool,'./Save/time_embed/{}/emb.pt'.format(dataset_src))
+        torch.save(time_embed_pool,'./Save/time_embed/{}/embed.pt'.format(dataset_src))
 
         center, center_label = kmeans_pytorch(
         X=time_embed_pool , num_clusters=cfg['time_cluster_k'], device=device)

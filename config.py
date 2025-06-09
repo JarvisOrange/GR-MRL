@@ -36,7 +36,7 @@ cfg = {
 
     #dataset information
     'dataset_info': {
-        'LA':{
+        'L':{
             'nodes': 207,
             'edges': 1722,
             'interval': 5,
@@ -46,7 +46,7 @@ cfg = {
             'start_time': '2017-05-01 00:00:00',
             'end_time': '2017-06-30 24:00:00'
         },
-        'BAY':{
+        'B':{
             'nodes': 325,
             'edges': 2694,
             'interval': 5,
@@ -56,7 +56,7 @@ cfg = {
             'start_time': '2017-01-01 00:00:00',
             'end_time': '2017-06-30 24:00:00'
         },
-        'CD':{
+        'C':{
             'nodes': 524,
             'edges': 1120,
             'interval': 10,
@@ -66,7 +66,7 @@ cfg = {
             'start_time': '2018-01-01 00:00:00',
             'end_time': '2018-04-30 24:00:00'
         },
-        'SZ':{
+        'S':{
             'nodes': 627,
             'edges': 4845,
             'interval': 10,
@@ -83,10 +83,10 @@ cfg = {
     
 
     # 数据集设置
-    # BAY: PEMS_BAY
-    # LA: MetrLA
-    # CD Chengdu
-    # SZ: Shenzhen
+    # B: PEMS_BAY
+    # L: MetrLA
+    # C Chengdu
+    # S: Shenzhen
     # dataset name order: BLCS
     # exmaple: B L C_S: B L C -> S
 
@@ -97,6 +97,8 @@ cfg = {
     'road_cluster_k': 16,
 
     'time_cluster_k': 32,
+
+    'retrieve_k': 1,
 
     'his_num': 72, # 历史时间步数
     'pre_num': 12, # 预测时间步数

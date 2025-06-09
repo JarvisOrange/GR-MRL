@@ -11,12 +11,6 @@ from Node_Embed_Model.SpaceSyntax import *
 import warnings
 warnings.filterwarnings('ignore')
 
-dataset_name_dict = {
-    "B": 'BAY',
-    "L": 'LA',
-    'C': 'CD',
-    'S': 'SZ',
-}
 
 class RoadData():
     def __init__(self, cfg, name, flag='pretrain',  target_day=3, logger=None):
@@ -154,8 +148,8 @@ class RoadData():
         y = np.array(target)
 
         
-        # x : [B, N, l_his， 7]
-        # y : [B, N, l_pre]
+        # x : [B=L/interval, N, l_his， 7]
+        # y : [B=L/interval, N, l_pre]
         return x, y
 
 

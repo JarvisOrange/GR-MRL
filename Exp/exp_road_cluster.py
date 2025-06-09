@@ -3,15 +3,15 @@ import torch
 from GR_MRL import GR_MRL
 from config import cfg
 from utils import *
-from Data.road_dataset import *
+from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
 
-def road_cluster(dataset_src, logger=None):
+def exp_road_cluster(dataset_src, logger=None):
 
     device = cfg['device']
 
     temp, _ = cfg['dataset_src_trg'].split('_')
-    dataset_src = ''.join(temp[0].split('-'))
+    dataset_src = ''.join(temp.split('-'))
     model_path = './Save/my_pretrain_model/{}/best_model.pt'.format(dataset_src)
 
     if not os.exist(model_path):

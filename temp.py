@@ -3,20 +3,20 @@ import datetime
 from config import cfg
 
 data_dict = {
-    "BAY": '2017-01-01',
-    "LA": '2012-05-01',
-    'CD': '2018-01-01',
-    'SZ': '2018-01-01',
+    "B": '2017-01-01',
+    "L": '2012-05-01',
+    'C': '2018-01-01',
+    'S': '2018-01-01',
 }
 
 dataset_name_dict = {
-    'BAY':0,
-     'LA':1,
-     'CD':2,
-     'SZ':3,
+    'B':0,
+     'L':1,
+     'C':2,
+     'S':3,
 }
 
-city = 'SZ'
+city = 'S'
 
 
 
@@ -28,7 +28,7 @@ def func(city):
     weekday_start = date.weekday()
     print(weekday_start,data.shape)
     z=0
-    if city == 'CD' or city == 'SZ':
+    if city == 'C' or city == 'S':
         temp = np.zeros((data.shape[0]*2-1, data.shape[1], 7), dtype=np.float32)
         for i in range(0, data.shape[0]):
             for j in range(data.shape[1]):
@@ -94,4 +94,4 @@ def func(city):
     data = np.load('./Raw_Data/'+city+'/dataset_new.npy')
     print(data.shape)
     print(data[1,3,:])
-func('BAY')
+func('B')
