@@ -10,3 +10,6 @@ LLM/
 Raw_Data/
 checkpoint/
 .DS_Store/
+Cache/
+Checkpoints/
+Output_Server/
