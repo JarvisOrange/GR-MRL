@@ -4,11 +4,11 @@ Bigscity-LibCity-master/
 output_error/
 test.sh
 __pycache__/
-cache/
-log/
+Cache/
+Log/
 LLM/
 Raw_Data/
-checkpoint/
+Checkpoints/
 .DS_Store/
 Cache/
 Checkpoints/
