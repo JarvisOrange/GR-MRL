@@ -18,9 +18,9 @@ class PromptDataset():
 
     def __getitem__(self, index):
         pass
-    
 
-class VectorDataset():
+
+class VectorBase():
     def __init__(self, dataset_src, vectors):
         self.vectors = vectors
         self.vectors.requires_grad = False

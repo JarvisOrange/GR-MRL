@@ -84,7 +84,7 @@ def generate_related(dataset_src, time_embed_pool, logger):
         json.dump(related_dict, f1, indent=4)
 
 
-def generate_prompt(self, dataset_src, dataloader, logger):
+def generate_prompt(self, dataset_src, dataloader, vectorbase, logger):
         model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
         if not os.exist(model_path):
             logger.info('please pretrain time patch encoder first.')
@@ -147,29 +147,29 @@ def exp_rag(logger=None):
         logger.info('generate related road first')
         generate_related(dataset_src, time_embed_pool, logger)
 
-    database = VectorDataset(dataset_src, time_embed_pool)
+    database = VectorBase(dataset_src, time_embed_pool)
 
     source_provider = RoadDataProvider(cfg, flag='source_train', logger=logger)
     source_dataloader = source_provider.generate_dataloader()
     src_prompt = generate_prompt(dataset_src, source_dataloader, logger)
-    src_json_path = 'Save/prompt/{}/src.json'.format(dataset_src)
+    src_json_path = 'Save/prompt/{}/src.json'.format(dataset_src, database)
     with open(src_json_path, 'w') as f:
                 json.dump(src_prompt , f, indent=4)
 
 
     target_provider = RoadDataProvider(cfg, flag='target_train', logger=logger)
     target_dataloader = target_provider.generate_dataloader()
-    trg_prompt = generate_prompt(dataset_src, target_dataloader)
+    trg_prompt = generate_prompt(dataset_src, target_dataloader, database)
     trg_json_path = 'Save/prompt/{}/trg.json'.format(dataset_src)
-    with open(src_json_path, 'w') as f:
+    with open(trg_json_path, 'w') as f:
                 json.dump(trg_prompt , f, indent=4)
 
     test_provider = RoadDataProvider(cfg, flag='test', logger=logger)
     test_dataloader = test_provider.generate_dataloader()
-    test_prompt = generate_prompt(dataset_src, test_dataloader)
+    test_json_path = generate_prompt(dataset_src, test_dataloader, database)
     test_json_path = 'Save/prompt/{}/test.json'.format(dataset_src)
-    with open(src_json_path, 'w') as f:
-                json.dump(trg_prompt , f, indent=4)
+    with open(test_json_path, 'w') as f:
+                json.dump(test_json_path , f, indent=4)
     
 
     
