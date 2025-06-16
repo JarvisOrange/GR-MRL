@@ -21,7 +21,7 @@ def exp_time_cluster(dataset_src, logger=None):
         time_embed_pool.requires_grad = False
 
         center, center_label = kmeans_pytorch(
-        X=time_embed_pool , num_clusters=cfg['time_cluster_k'])
+        X = time_embed_pool , num_clusters=cfg['time_cluster_k'])
     
         torch.save(center,'./Save/time_pattern/{}/{}_c.pt'.format(dataset_src, cfg['time_cluster_k']))
         torch.save(center_label,'./Save/time_pattern/{}/{}_cl.pt'.format(dataset_src, cfg['time_cluster_k']))

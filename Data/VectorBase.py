@@ -20,7 +20,9 @@ class PromptDataset(Dataset):
         return len(self.prompt)
 
     def __getitem__(self, index):
-        return self.prompt[index]
+        ###fix, rewrite prompt dataset to train
+        temp =  self.prompt[index]
+        return temp['index'], temp['ref'], temp['prompt'], temp['truth']
 
 
 class VectorBase():

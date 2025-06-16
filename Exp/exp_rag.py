@@ -5,7 +5,7 @@ from config import cfg
 from utils import kmeans_pytorch
 from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
-from Data.prompt_dataset import *
+from Data.VectorBase import *
 
 
 dataset_description = {

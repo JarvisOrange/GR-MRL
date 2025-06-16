@@ -180,7 +180,7 @@ class TSFormer(nn.Module):
             forecasting: 
                 torch.Tensor: the output of TSFormer of the encoder with shape [B, N, L, d].
         """
-        if self.mode == 'pain':
+        if self.mode == 'pretrain':
             return self._forward_pretrain(input_data)
         elif self.mode == 'test':
             return self._inference(input_data)

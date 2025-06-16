@@ -4,7 +4,7 @@ from transformers import AutoModel, AutoConfig, AutoTokenizer
 from peft import get_peft_config, get_peft_model, TaskType, LoraConfig, AdaLoraConfig
 from config import cfg
 from Model.TSFormer.TSmodel import *
-from Data.prompt_dataset import *
+from Data.VectorBase import *
 
 
 class GR_MRL(nn.Module):
@@ -27,8 +27,11 @@ class GR_MRL(nn.Module):
         self.road_pattern  = torch.load('Save/road_pattern/{}/embed_{}.pt'.format(dataset_src, cfg['time_cluster_k']))
         self.road_pattern.requires_grad = False
 
-        
+        embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
+        self.time_embed_pool = torch.load(embed_path).to(self.device)
+        self.time_embed_pool.requires_grad = False
 
+        ###fix write a model to combine input vector with pattern
         self.mapping_layer = nn.Linear(self.)
 
 
@@ -60,20 +63,16 @@ class GR_MRL(nn.Module):
             pad_token = '[PAD]'
             self.tokenizer.add_special_tokens({'pad_token': pad_token})
             self.tokenizer.pad_token = pad_token
-
-
-    def generate_prompt(self, batch):
-        pass
-
-
     
 
 
-    def forward(self, batch):
+    def forward(self, batch_x):
 
-
+        ###fix
         # with torch.zero_grad:
         #     time_embed = 
+
+        index,ref = batch_x[index], batch_x['ref']
 
         prompt = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
         prompt_embeddings = self.llm_model.get_input_embeddings()(prompt.to(x_enc.device))  # (batch, prompt_token, dim)
