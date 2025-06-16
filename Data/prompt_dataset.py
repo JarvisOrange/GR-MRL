@@ -8,16 +8,19 @@ from config import cfg
 import faiss
 from torch.utils.data import Dataset, DataLoader
 
-class PromptDataset():
-    def __init__(self):
-        pass
+class PromptDataset(Dataset):
+    def __init__(self, dataset_src, flag = 'src'):
+        path = './Save/prompt/{}/{}.json'.format(dataset_src,src)
+        
+        with open(path, 'r') as f:
+             self.prompt = json.load(f)
     
 
     def __len__(self):
-        pass
+        return len(self.prompt)
 
     def __getitem__(self, index):
-        pass
+        return self.prompt[index]
 
 
 class VectorBase():

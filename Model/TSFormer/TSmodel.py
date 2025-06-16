@@ -136,7 +136,7 @@ class TSFormer(nn.Module):
             torch.Tensor: the output of TSFormer of the encoder with shape [B, N, L, d].
         """
 
-        B, N, C, L = input.shape
+        B, C, L = input.shape
         position = input[:,:,self.position_feature,:].unsqueeze(2)
         pos_indices = torch.arange(0, L, self.patch_size)
         position = position[:,:,:,pos_indices]
@@ -145,7 +145,7 @@ class TSFormer(nn.Module):
         position = position // 12
         position = position % 168 # 168 = 24 * 7
 
-        # B, N, 1, L
+        # B, 1, L
         input = input[:,:,self.seleted_feature,:].unsqueeze(2)
 
         # get patches and exec input embedding
@@ -160,6 +160,8 @@ class TSFormer(nn.Module):
 
         # encoder
         H = self.encoder(encoder_input)         # B,  L/P, d
+
+        H = H.reshape(B, -1)
         return H
     
 

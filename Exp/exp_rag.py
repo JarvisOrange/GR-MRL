@@ -148,7 +148,8 @@ def exp_rag(logger=None):
         generate_related(dataset_src, time_embed_pool, logger)
 
     database = VectorBase(dataset_src, time_embed_pool)
-
+    
+    database.mode = 'source_train'
     source_provider = RoadDataProvider(cfg, flag='source_train', logger=logger)
     source_dataloader = source_provider.generate_dataloader()
     src_prompt = generate_prompt(dataset_src, source_dataloader, logger)
@@ -157,6 +158,7 @@ def exp_rag(logger=None):
                 json.dump(src_prompt , f, indent=4)
 
 
+    database.mode = 'target_train'
     target_provider = RoadDataProvider(cfg, flag='target_train', logger=logger)
     target_dataloader = target_provider.generate_dataloader()
     trg_prompt = generate_prompt(dataset_src, target_dataloader, database)
@@ -164,6 +166,8 @@ def exp_rag(logger=None):
     with open(trg_json_path, 'w') as f:
                 json.dump(trg_prompt , f, indent=4)
 
+
+    database.mode = 'test'
     test_provider = RoadDataProvider(cfg, flag='test', logger=logger)
     test_dataloader = test_provider.generate_dataloader()
     test_json_path = generate_prompt(dataset_src, test_dataloader, database)

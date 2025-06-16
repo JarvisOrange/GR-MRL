@@ -178,7 +178,7 @@ class RoadDataProvider():
     
                 cur += R_num_dict[dataset.name]
 
-            cluster_label,_ = kmeans_pytorch(self.Road_E, self.cfg['road_k']) #[label_2, label_10..., label_1]
+            cluster_label,_ = kmeans_pytorch(self.Road_E, self.cfg['road_cluster_k']) #[label_2, label_10..., label_1]
 
             self.road_cluster_label = cluster_label
 

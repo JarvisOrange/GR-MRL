@@ -6,7 +6,8 @@ from Data.prompt_dataset import Vectorbase
 from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
 from Data.prompt_dataset import *
-import faiss
+from config import cfg
+
 
 
 def exp_main(logger=None):
@@ -15,14 +16,16 @@ def exp_main(logger=None):
     temp, _= cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
 
-    source_provider = RoadDataProvider(cfg, flag='source_train', logger=logger)
-    source_dataloader = source_provider.generate_dataloader()
+    flag = 'source_train'
 
-    target_provider = RoadDataProvider(cfg, flag='target_train', logger=logger)
-    target_dataloader = target_provider.generate_dataloader()
+    bs = cfg['flag'][flag]['batch_size']
 
-    test_provider = RoadDataProvider(cfg, flag='test', logger=logger)
-    test_dataloader = test_provider.generate_dataloader()
+    source_dataset = PromptDataset(dataset_src, 'src')
+    source_dataloader = DataLoader(source_dataset, batch_size = bs, shuffle = True, drop_last=False)
+    
+    for epoch in cfg['flag'][flag]:
+        for batch in source_dataloader:
+            output = model(batch)
 
 
     # init model and vectorbase
@@ -34,9 +37,7 @@ def exp_main(logger=None):
 
 
     # source train
-    for epoch in cfg['flag']['source_train']:
-        for batch in source_dataloader:
-            output = model(batch)
+    
 
 
     # target finetune

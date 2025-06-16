@@ -19,31 +19,22 @@ class GR_MRL(nn.Module):
         temp, _= cfg['dataset_src_trg'].split('_')
         dataset_src = ''.join(temp.split('-'))
 
-        self.load_time_encoder(dataset_src)
-
-        self.build_VectorDatabase(dataset_src)
-
         self.set_LLM()
 
-        self.set_
+        self.time_pattern  = torch.load('Save/time_pattern/{}/embed_{}.pt'.format(dataset_src, cfg['time_cluster_k']))
+        self.time_pattern.requires_grad = False
+        
+        self.road_pattern  = torch.load('Save/road_pattern/{}/embed_{}.pt'.format(dataset_src, cfg['time_cluster_k']))
+        self.road_pattern.requires_grad = False
 
-        self.
+        
+
+        self.mapping_layer = nn.Linear(self.)
 
 
     def update_mode(self, mode='train'):
         self.mode = mode
 
-
-    def load_time_encoder(self, dataset_src):
-        model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
-        self.time_encoder = TSFormer(cfg['TSFromer']).to(self.device)
-        self.time_encoder.mode = 'test'
-
-
-    def build_VectorDatabase(self, dataset_src):
-        embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
-        time_embed_pool = torch.load(embed_path).to(self.device)
-        vd = VectorDataset(time_embed_pool)
 
     def set_LLM(self):
         llm_config = AutoConfig.from_pretrained(
@@ -63,11 +54,12 @@ class GR_MRL(nn.Module):
             trust_remote_code=True
         ).cuda(self.device)
 
-
-    def set_patch_embed_to_word_embed(self, time_embed):
-        self.transform_layer = nn.Sequential(
-            
-        )
+        if self.tokenizer.eos_token:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        else:
+            pad_token = '[PAD]'
+            self.tokenizer.add_special_tokens({'pad_token': pad_token})
+            self.tokenizer.pad_token = pad_token
 
 
     def generate_prompt(self, batch):
@@ -78,10 +70,16 @@ class GR_MRL(nn.Module):
 
 
     def forward(self, batch):
-        with torch.zero_grad:
-            time_embed = 
 
 
+        # with torch.zero_grad:
+        #     time_embed = 
+
+        prompt = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
+        prompt_embeddings = self.llm_model.get_input_embeddings()(prompt.to(x_enc.device))  # (batch, prompt_token, dim)
+
+        llama_enc_out = torch.cat([prompt_embeddings, enc_out], dim=1)
+        dec_out = self.llm_model(inputs_embeds=llama_enc_out).last_hidden_state
 
 
 
