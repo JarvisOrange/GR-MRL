@@ -10,23 +10,23 @@ from Exp.exp_pretrain import *
 from Exp.exp_rag import *
 from Exp.exp_road_cluster import *
 from Exp.exp_time_cluster import *
+from Exp.exp_main import *
 
 
 
 def set_cfg():
     parser = ArgumentParser()
     parser.add_argument("--exp_tag", type=int)
-    parser.add_argument("--src", type=str)
-    parser.add_argument("--trg", type=str)
+    parser.add_argument("--dataset_src_trg", type=str)
     parser.add_argument("--device", type=str)
     args = parser.parse_args()
     
     cfg["exp_tag"] = args.exp_tag
-    cfg["dataset_source"] = args.src
-    cfg["dataset_target"] = args.trg
+    cfg["dataset_src_trg"] = args.dataset_src_trg
     cfg["device"] = args.device
 
-    exp_dir = f"checkpoint/exp_{cfg['exp_tag']}/{args.src}_{args.trg}"
+    exp_dir = f"Checkpoints/exp_{cfg['exp_tag']}/{args.dataset_src_trg}"
+
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
 
@@ -35,16 +35,12 @@ def set_cfg():
 
 def main():
     set_cfg()
+
     _logger = get_logger(cfg)
-    
-    model = GR_MRL(cfg)
-    model.to(cfg['device'])
 
     #stage 0:  preprocess data and get dataset 
     
 
-
-    
     # #stage 1: pretrain time patch encoder or get pretrain time patch encoder
     exp_pretrain(logger=_logger)
 
@@ -59,9 +55,7 @@ def main():
     
 
     # #stage 4: finetune model
-    # generate_prompt()
-
-    # finetune_model()
+    exp_main(logger=_logger)
 
 
 if __name__ == '__main__':

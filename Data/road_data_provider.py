@@ -239,10 +239,10 @@ class RoadDataProvider():
 
     def generate_dataloader(self):
         bs = self.cfg['flag']['self.flag']['batch_size']
-        if self.flag == 'time_cluster' or self.flag == 'rag': 
+        if self.flag == 'pretrain': 
             drop_last = False
             shuffle = False
-        else:
+        else: # source_train target_train test rag time_cluster road_cluster don't need shuffle
             drop_last = self.cfg['drop_last']
         R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
 

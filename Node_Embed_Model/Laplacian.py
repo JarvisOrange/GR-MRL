@@ -22,4 +22,3 @@ def get_laplac_embed(adj_mx, dim=64):
         laplacian_pe = torch.from_numpy(EigVec[:, isolated_point_num + 1: dim + isolated_point_num + 1]).float()
         laplacian_pe.require_grad = False
         return laplacian_pe
-

@@ -1,83 +1,87 @@
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model, PeftModel
-
+from transformers import AutoModel, AutoConfig, AutoTokenizer
+from peft import get_peft_config, get_peft_model, TaskType, LoraConfig, AdaLoraConfig
+from config import cfg
+from Model.TSFormer.TSmodel import *
+from Data.prompt_dataset import *
 
 
 class GR_MRL(nn.Module):
-    def __init__(self):
+    def __init__(self, mode='train'):
         super(GR_MRL, self).__init__()
 
-    
-    def Node_embedding(self, input_ids):
-        # Custom node embedding logic
-        pass
+        self.device = cfg['device']
+        self.LLM_path = cfg['LLM_path']
+        
+        self.mode = 'train'
+
+        temp, _= cfg['dataset_src_trg'].split('_')
+        dataset_src = ''.join(temp.split('-'))
+
+        self.load_time_encoder(dataset_src)
+
+        self.build_VectorDatabase(dataset_src)
+
+        self.set_LLM()
+
+        self.set_
+
+        self.
 
 
+    def update_mode(self, mode='train'):
+        self.mode = mode
 
 
-class PositionEmbedding(nn.Module):
-    def __init__(self, max_len=512, d_model=768):
-        super(PositionEmbedding, self).__init__()
-        self.position_embedding = nn.Embedding(max_len, d_model)
+    def load_time_encoder(self, dataset_src):
+        model_path = './Save/my_pretrain_model/{}/best_model.pt'.format(dataset_src)
+        self.time_encoder = TSFormer(cfg['TSFromer']).to(self.device)
+        self.time_encoder.mode = 'test'
 
-    def NodePositionEmbedding( self, x):
-        # Custom node position embedding logic
-        pass
 
-    def TemporalPositionEmbedding(self, x): 
-        pass
+    def build_VectorDatabase(self, dataset_src):
+        embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
+        time_embed_pool = torch.load(embed_path).to(self.device)
+        vd = VectorDataset(time_embed_pool)
 
-    def forward(self, x):
-        seq_len = x.size(1)
-        positions = torch.arange(seq_len, dtype=torch.long).unsqueeze(0).expand_as(x)
-        return self.position_embedding(positions)
-    
+    def set_LLM(self):
+        llm_config = AutoConfig.from_pretrained(
+            self.LLM_path / 'config.json',
+            trust_remote_code = True,
+            )
+        
+        self.word_hidden_size = llm_config['hidden_size']
+        
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.LLM_path,
+            trust_remote_code=True,
+            )
 
-class LoraModel():
-    def __init__(self, model_name):
-        super(LoraModel, self).__init__()
-        self.model = AutoModelForCausalLM.from_pretrained(model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model_name = "LLM/Meta-Llama-3-8B"  # Replace with the correct model name
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", torch_dtype=torch.float32)
+        self.llm = AutoModel.from_pretrained(
+             self.LLM_path,
+            trust_remote_code=True
+        ).cuda(self.device)
 
-        # Configure LoRA
-        lora_config = LoraConfig(
-            r=16,  # Rank of the LoRA update matrices
-            lora_alpha=32,  # Scaling factor
-            target_modules=["q_proj", "v_proj"],  # Target modules to apply LoRA
-            lora_dropout=0.1,  # Dropout rate
-            bias="none",  # Bias type
-            task_type="CAUSAL_LM"  # Task type
+
+    def set_patch_embed_to_word_embed(self, time_embed):
+        self.transform_layer = nn.Sequential(
+            
         )
 
-        # Apply LoRA to the model
-        model = get_peft_model(model, lora_config)
 
-        # Prepare the model for training
-        model.train()
+    def generate_prompt(self, batch):
+        pass
 
-        # Example training loop
-        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
-        data = ["Example sentence 1", "Example sentence 2"]  # Replace with your dataset
-        inputs = tokenizer(data, return_tensors="pt", padding=True, truncation=True).to(model.device)
 
-        for epoch in range(3):  # Number of epochs
-            outputs = model(**inputs, labels=inputs["input_ids"])
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-            print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
+    
 
-        # Save the LoRA fine-tuned model
-        model.save_pretrained("lora_finetuned_llama2")
-        tokenizer.save_pretrained("lora_finetuned_llama2")
 
-    def forward(self, input_ids, attention_mask=None):
-        outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
-        return outputs
+    def forward(self, batch):
+        with torch.zero_grad:
+            time_embed = 
+
+
+
+
 

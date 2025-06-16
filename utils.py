@@ -185,3 +185,5 @@ class Feq_Loss(nn.Module):
         return loss_feq
     
 
+
+

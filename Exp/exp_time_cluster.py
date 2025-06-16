@@ -18,6 +18,7 @@ def exp_time_cluster(dataset_src, logger=None):
 
     if os.exist(embed_path):
         time_embed_pool = torch.load(embed_path).to(device)
+        time_embed_pool.requires_grad = False
 
         center, center_label = kmeans_pytorch(
         X=time_embed_pool , num_clusters=cfg['time_cluster_k'])
@@ -63,6 +64,8 @@ def exp_time_cluster(dataset_src, logger=None):
             temp = x.shape[0] + temp
         
         logger.info("{} emb_pool shape : {}".format(dataset_src, time_embed_pool.shape))
+
+        time_embed_pool.requires_grad = False
 
         torch.save(time_embed_pool,'./Save/time_embed/{}/embed.pt'.format(dataset_src))
 

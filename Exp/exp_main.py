@@ -2,14 +2,11 @@ import os
 import torch
 from GR_MRL import GR_MRL
 from config import cfg
-from RAG_Component.databases import Vectorbase
+from Data.prompt_dataset import Vectorbase
 from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
-from RAG_Component.databases import *
-
-
-def generate_prompt():
-    pass
+from Data.prompt_dataset import *
+import faiss
 
 
 def exp_main(logger=None):
@@ -29,31 +26,28 @@ def exp_main(logger=None):
 
 
     # init model and vectorbase
-    model = GR_MRL()
+    model = GR_MRL('train')
 
-    temp, _= cfg['dataset_src_trg'].split('_')
-    dataset_src = ''.join(temp.split('-'))
-
-    embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
-    time_embed_pool = torch.load(embed_path).to(device)
-    vd = VectorDatabase(time_embed_pool)
+    
 
     # init exp settings
 
 
-    #source train
-    
-    for batch in source_dataloader:
-        pass
+    # source train
+    for epoch in cfg['flag']['source_train']:
+        for batch in source_dataloader:
+            output = model(batch)
 
 
-    #target train
-    for batch in target_dataloader:
-        pass
+    # target finetune
+    for epoch in cfg['flag']['target_train']:
+        for batch in target_dataloader:
+            pass
 
 
-    #test train
-    for batch in target_dataloader:
+    # inference
+    model = GR_MRL('test')
+    for batch in test_dataloader:
         pass
 
 

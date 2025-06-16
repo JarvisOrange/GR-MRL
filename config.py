@@ -117,6 +117,16 @@ cfg = {
         'mask_ratio':0.75,
         'n_layer':4,
     },
+
+    'GR_MRL': {
+        'time_expert': 32,
+        'road_expert': 16,
+        'expert_dim': 64
+    },
+
+    'LLM_path': './LLM/glm-4-9b',
+
+
     
 
     # 训练设置

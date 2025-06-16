@@ -47,7 +47,7 @@ class RoadData():
         X = torch.tensor(X,dtype=torch.float)
 
         mean, std = self.cfg['dataset_info'][self.name]['mean'], self.cfg['dataset_info'][self.name]['std']
-        X[:,0,:] = (X[:,0,:] - mean ) /std
+        X[:,0,:] = (X[:,0,:] - mean ) / std
             
         
         if flag == 'pretrain': # use three source datasets only
