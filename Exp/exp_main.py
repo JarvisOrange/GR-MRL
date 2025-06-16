@@ -21,7 +21,7 @@ def exp_main(logger=None):
     target_provider = RoadDataProvider(cfg, flag='target_train', logger=logger)
     target_dataloader = target_provider.generate_dataloader()
 
-    test_provider = RoadDataProvider(cfg, flag='target_train', logger=logger)
+    test_provider = RoadDataProvider(cfg, flag='test', logger=logger)
     test_dataloader = test_provider.generate_dataloader()
 
 

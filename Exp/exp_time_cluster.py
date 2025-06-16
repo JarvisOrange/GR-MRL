@@ -27,7 +27,7 @@ def exp_time_cluster(dataset_src, logger=None):
         torch.save(center_label,'./Save/time_pattern/{}/{}_cl.pt'.format(dataset_src, cfg['time_cluster_k']))
 
     else:
-        model_path = './Save/my_pretrain_model/{}/best_model.pt'.format(dataset_src)
+        model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
         if not os.exist(model_path):
             logger.info('please pretrain time patch encoder first.')
             return 
@@ -49,13 +49,13 @@ def exp_time_cluster(dataset_src, logger=None):
         temp = 0
         for batch in tqdm(dataloader):
 
-            x = batch.permute(0,1,3,2) # B N l_his 7 - > B N 7 l_his
+            x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
             
             H = model(x)
 
-            B, N, C, L = x.shape
+            B,  C, L = x.shape
 
-            H = H.reshape(B * N * L, -1) # N_time_patch * dim
+            H = H.reshape(B *  L, -1) # N_time_patch * dim
 
             logger.info('corresbonding H shape : {}'.format(H.shape))
 

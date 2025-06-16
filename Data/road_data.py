@@ -130,7 +130,7 @@ class RoadData():
 
 
     def generate_data(X, num_timesteps_input, num_timesteps_output, interval_step):
-        #!!! to be fix -> N l 7
+        
         # Generate the beginning index and the ending index of a sample, which
         # contains (num_points_for_training + num_points_for_predicting) points
         indices = [(i, i + (num_timesteps_input + num_timesteps_output)) for i
@@ -148,8 +148,8 @@ class RoadData():
         y = np.array(target)
 
         
-        # x : [B=L/interval, N, l_his， 7]
-        # y : [B=L/interval, N, l_pre]
+        # x : [S, N, l_his， 7]
+        # y : [S, N, l_pre]
         return x, y
 
 
@@ -163,36 +163,35 @@ class RoadData():
             self._logger.warning("y is None, return x only")
             
 
-
         if self.flag == 'pretrain':
-            # x : [B * N, l_his， 7]
-            x = self.x.reshape(-1, self.pre_num, 7)
+            # x : [S * N, l_his， 7]
+            x = self.x.reshape(-1, self.his_num, 7)
 
             return x
         
         if self.flag == 'time_cluster':
-            # x : [B * N, l_his， 7]
-            x = self.x.reshape(-1, self.pre_num, 7)
+            # x : [S * N, l_his， 7]
+            x = self.x.reshape(-1, self.his_num, 7)
             
             return x
         
         if self.flag == 'road_cluster':
-            # x : [N, B*l_his， 7]
+            # x : [N, S*l_his， 7]
             x = self.x.transpose((1, 0, 2, 3))
             x = x.reshape(self.node_num, -1, 7)
             return x, y
         
         if self.flag == 'rag':
-            # x : [N, B, l_his， 7]
-            x = self.x.reshape(-1, self.pre_num, 7)
+            # x : [S * N, l_his， 7]
+            x = self.x.reshape(-1, self.his_num, 7)
             
             return x
         
         if self.flag == 'source_train' or self.flag == 'target_train' or self.flag == 'test':
-            # x : [N * B, l_his， 7]
-            # y : [N * B, l_pre] 
-            x = self.x.reshape(-1, self.pre_num, 7)
-            y = self.y.reshape(-1, self.his_num)
+            # x : [S * N, l_his， 7]
+            # y : [S * N, l_pre] 
+            x = self.x.reshape(-1, self.his_num, 7)
+            y = self.y.reshape(-1, self.pre_num)
 
             return x, y
         

@@ -31,14 +31,19 @@ class RoadDataset(Dataset):
         return self.X.shape[0]
 
     def __getitem__(self, index):
+        if self.flag == 'pretrain':
+            x= self.X[index]
+            x = torch.from_numpy(x).float()
+            return x
+
         if self.flag == 'time_cluster' or \
             self.flag == 'road_cluster' or \
-            self.flag == 'pretrain' or \
             self.flag == 'road_cluster' or \
             self.flag == 'rag':
 
             x= self.X[index]
             x = torch.from_numpy(x).float()
+            x.requires_grad = False
             return x
 
         if self.flag =='source_train' or \
@@ -47,6 +52,8 @@ class RoadDataset(Dataset):
              
             x = self.X[index]
             y = self.Y[index]
+            x.requires_grad = False
+            y.requires_grad = False
             x = torch.from_numpy(x).float().to(self.device)
             y = torch.from_numpy(y).float().to(self.device)
             return x, y
@@ -86,15 +93,15 @@ class RoadDataProvider():
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
-            self.X = np.zeros([X_num, his_num], dtype=float)
-            self.Y = np.zeros([X_num, pre_num], dtype=float)
+            self.X = np.zeros([X_num, his_num, 7], dtype=float)
+            self.Y = np.zeros([X_num, pre_num, 7], dtype=float)
 
             cur = 0
             for dataset in self.data_list:
                 x, y = dataset.get_data()
                 
-                self.X[cur:cur + X_num_dict[dataset.name], :] = x
-                self.Y[cur:cur + X_num_dict[dataset.name], :] = y
+                self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
+                self.Y[cur:cur + X_num_dict[dataset.name], :, :] = y
 
                 cur += dataset.get_data_num()
 
@@ -112,15 +119,13 @@ class RoadDataProvider():
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
-            self.X = np.zeros([X_num, his_num], dtype=float)
-            self.Y = np.zeros([X_num, pre_num], dtype=float)
+            self.X = np.zeros([X_num, his_num, 7], dtype=float)
 
             cur = 0
             for dataset in self.data_src_list:
-                x, y = dataset.get_data()
+                x = dataset.get_data()
                 
-                self.X[cur:cur + X_num_dict[dataset.name], :] = x
-                self.Y[cur:cur + X_num_dict[dataset.name], :] = y
+                self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
 
                 cur += dataset.get_data_num()
 
@@ -147,7 +152,6 @@ class RoadDataProvider():
 
                 cur += X_num_dict[dataset.name]
 
-            X_num_dict
         
         if flag == 'road_cluster':
             ### road
@@ -202,7 +206,7 @@ class RoadDataProvider():
                     elif i < R_num_dict[dataset_name_dict[2]]:
                         temp_x += list(np.squeeze(self.X_road_cluster_2[i], dim=0))
                 temp_x = np.array(temp_x)
-                self.X_road_cluster_dict[k] = temp_x #[, B*l, 7]
+                self.X_road_cluster_dict[k] = temp_x #[, S*l_his, 7]
             
 
         if flag == 'rag':
@@ -238,12 +242,14 @@ class RoadDataProvider():
     
 
     def generate_dataloader(self):
-        bs = self.cfg['flag']['self.flag']['batch_size']
+        drop_last = False
+        shuffle = False
+        
         if self.flag == 'pretrain': 
-            drop_last = False
-            shuffle = False
+            bs = self.cfg['flag'][self.flag]['batch_size']
         else: # source_train target_train test rag time_cluster road_cluster don't need shuffle
-            drop_last = self.cfg['drop_last']
+            bs = 1
+
         R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
 
         dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = shuffle, drop_last=drop_last)

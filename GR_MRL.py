@@ -35,7 +35,7 @@ class GR_MRL(nn.Module):
 
 
     def load_time_encoder(self, dataset_src):
-        model_path = './Save/my_pretrain_model/{}/best_model.pt'.format(dataset_src)
+        model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
         self.time_encoder = TSFormer(cfg['TSFromer']).to(self.device)
         self.time_encoder.mode = 'test'
 

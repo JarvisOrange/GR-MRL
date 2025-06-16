@@ -11,13 +11,13 @@ class TransformerLayers(nn.Module):
         self.transformer_encoder = TransformerEncoder(encoder_layers, nlayers)
 
     def forward(self, src):
-        B, N, L, D = src.shape
+        B, L, D = src.shape
         src = src * math.sqrt(self.d_model)
-        src = src.view(B*N, L, D)
+        src = src.view(B, L, D)
         src = src.transpose(0, 1)
         output = self.transformer_encoder(src, mask=None)
-        output = output.transpose(0, 1).view(B, N, L, D)
+        output = output.transpose(0, 1).view(B, L, D)
         
-        # return [B, N, L, D]
+        # return [B, L, D]
         
         return output

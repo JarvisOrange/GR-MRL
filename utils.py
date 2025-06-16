@@ -141,11 +141,8 @@ def kmeans_pytorch(X, n_clusters, max_iter=100, tol=1e-4, device=None):
 
 
 def calc_metric(pred, y, flag = "train"):
-    # input B * L * N
+    # input B, L
 
-    B, L, N = pred.shape
-    pred = pred.transpose(B, N, -1).reshape(-1,L) # (B * N, L)
-    y = y.transpose(B,N,-1).reshape(-1,L)
     MSE = torch.mean((pred - y)**2, dim = 0)
     RMSE = torch.sqrt(MSE)
     MAE = torch.mean(torch.abs(pred - y), dim = 0)
@@ -158,6 +155,7 @@ def unnorm(x ,means, stds):
     means = means.expand(B, LL, N)
     stds = stds.expand(B, LL, N)
     return x * stds + means
+
 
 def adj_to_dict(adj):
     #!!! CD SZ may have weight which is not 1 or 0

@@ -100,7 +100,7 @@ cfg = {
 
     'retrieve_k': 1,
 
-    'his_num': 72, # 历史时间步数
+    'his_num': 288, # 历史时间步数
     'pre_num': 12, # 预测时间步数
 
     'target_day': 3,

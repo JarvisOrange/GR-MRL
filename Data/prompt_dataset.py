@@ -18,18 +18,20 @@ class PromptDataset():
 
     def __getitem__(self, index):
         pass
+    
 
 class VectorDataset():
-    def __init__(self, vectors, cfg):
+    def __init__(self, dataset_src, vectors):
         self.vectors = vectors
         self.vectors.requires_grad = False
 
         self.index = faiss.IndexFlatL2(vectors.shape[1])
         self.index.add(self.vectors)
 
-    def load_json(self,cfg):
-        temp, _= cfg['dataset_src_trg'].split('_')
-        dataset_src = ''.join(temp.split('-'))
+        self.load_related_json(dataset_src)
+
+
+    def load_related_json(self, dataset_src):
 
         path = './Save/road_related/{}/result.json'.format(dataset_src)
         
@@ -42,8 +44,10 @@ class VectorDataset():
         return [idx for idx in indices[0]]
     
 
-    def query_related(self, q, k):
+    def query_related(self, index, q, k):
         temp_list =  self.query(q, k)
+
+        temp_list = [x for x in temp_list if x != index] # delete self
 
         res = []
         for i in temp_list:
@@ -55,15 +59,5 @@ class VectorDataset():
         return self.vectors[index].float().to(cfg['device'])
     
 
-    def generate_prompt_dataset(self, encode_model, dataloader):
-
-        prompt_dict = {}
-
-        k = cfg['retrieve_k']
-
-        for index in range(self.vectors.shape[0]):
-
-            related_list = self.query_related(self.vectors[index], k)
-
-            prompt = 
+    
     

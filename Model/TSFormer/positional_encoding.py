@@ -12,8 +12,8 @@ class LearnableTemporalPositionalEncoding(nn.Module):
     def forward(self, X, index):
         """
         Args:
-            x: Tensor, shape [B*N, L/P, d]
-            index: Tensor, shape [B*N, L/P, 1]
+            x: Tensor, shape [B, L/P, d]
+            index: Tensor, shape [B, L/P, 1]
         """
         if index is None:
             pe = self.pe[:X.size(1), :]
@@ -32,16 +32,15 @@ class PositionalEncoding(nn.Module):
     def forward(self, input, index=None, abs_idx=None):
         """
         Args:
-            input: B, N, L/P, d
-            index: Tensor, shape [B, N, 1, L/P]
+            input: B,  L/P, d
+            index: Tensor, shape [B,  1, L/P]
         """
 
-        B, N, L_P, d = input.shape
+        B,  L_P, d = input.shape
 
         # temporal embedding
-        index = index.contiguous().view(B*N,L_P,1)
-        input = self.tem_pe(input.view(B*N, L_P, d), index=index)
-        input = input.view(B, N, L_P, d)
+        index = index.contiguous().view(B,L_P,1)
+        input = self.tem_pe(input.view(B, L_P, d), index=index)
         
         # absolute positional embedding
         return input

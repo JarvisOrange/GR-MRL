@@ -22,7 +22,7 @@ def exp_pretrain(logger=None):
     
     temp, _ = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
-    model_path = './Save/my_pretrain_model/{}/'.format(dataset_src)
+    model_path = './Save/pretrain_model/{}/'.format(dataset_src)
     ensure_dir(model_path)
     
     provider = RoadDataProvider(cfg, flag='pretrain',logger=logger)
@@ -37,7 +37,6 @@ def exp_pretrain(logger=None):
     logger.info('pretrain model has {} parameters'.format(count_parameters(model)))
     
     best_loss = 9999999999999.0
-    best_model = None
 
     epochs = cfg['flag']['pretrain']['epoch']
 
@@ -54,8 +53,8 @@ def exp_pretrain(logger=None):
             total_mape = []
             model.train()
            
-            # input : [B, N, l, 7] -> [B, N, 7, l]
-            x = x.permute(0,1,3,2).to(device)
+            # input : [B, l, 7] -> [B, 7, l]
+            x = batch.permute(0,2,1).to(device)
             
             out_masked_tokens, label_masked_tokens = model(x)
             
@@ -66,7 +65,7 @@ def exp_pretrain(logger=None):
             opt.step()
             
             # unmask
-            means, stds = torch.squeeze(batch[:, 0, 0, 5]), torch.squeeze(batch[:, 0, 0, 6])
+            means, stds = torch.squeeze(batch[:,  0, 5]), torch.squeeze(batch[:, 0, 6])
             unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
             
             MSE,RMSE,MAE,MAPE = calc_metric(unnorm_out, unnorm_label)
@@ -91,8 +90,8 @@ def exp_pretrain(logger=None):
             total_mape = []
             model.eval()
             
-            # input : [B, N, l, 7] -> [B, N, 7, l]
-            x = x.permute(0,1,3,2).to(device)
+            # input : [B,  l, 7] -> [B, 7, l]
+            x = batch.permute(0,2,1).to(device)
             
             out_masked_tokens, label_masked_tokens = model(x)
             
@@ -103,7 +102,7 @@ def exp_pretrain(logger=None):
             opt.step()
             
             # unmask
-            means, stds = torch.squeeze(batch[:, 0, 0, 5]), torch.squeeze(batch[:, 0, 0, 6])
+            means, stds = torch.squeeze(batch[:, 0, 5]), torch.squeeze(batch[:,  0, 6])
             unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
             
             MSE,RMSE,MAE,MAPE = calc_metric(unnorm_out, unnorm_label)
@@ -120,7 +119,6 @@ def exp_pretrain(logger=None):
         
         mae_loss = np.mean(total_mae)
         if(mae_loss < best_loss):
-            best_model = model
             best_loss = mae_loss
             torch.save(model.state_dict(), model_path / 'best_model.pt')
             logger.info('Best model. Saved.')
@@ -136,8 +134,8 @@ def exp_pretrain(logger=None):
             total_mape = []
             model.eval()
             
-            # input : [B, N, l, 7] -> [B, N, 7, l]
-            x = x.permute(0,1,3,2).to(device)
+            # input : [B, l, 7] -> [B, 7, l]
+            x = batch.permute(0,2,1).to(device)
             
             out_masked_tokens, label_masked_tokens = model(x)
             
@@ -148,7 +146,7 @@ def exp_pretrain(logger=None):
             opt.step()
             
             # unmask
-            means, stds = torch.squeeze(batch[:, 0, 0, 5]), torch.squeeze(batch[:, 0, 0, 6])
+            means, stds = torch.squeeze(batch[:,  0, 5]), torch.squeeze(batch[:,  0, 6])
             unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
             
             MSE,RMSE,MAE,MAPE = calc_metric(unnorm_out, unnorm_label)

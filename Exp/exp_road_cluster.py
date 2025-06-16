@@ -12,7 +12,7 @@ def exp_road_cluster(dataset_src, logger=None):
 
     temp, _ = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
-    model_path = './Save/my_pretrain_model/{}/best_model.pt'.format(dataset_src)
+    model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
 
     if not os.exist(model_path):
         logger.info('please pretrain time patch encoder first.')
@@ -39,13 +39,13 @@ def exp_road_cluster(dataset_src, logger=None):
         temp = 0
         for batch in tqdm(dataloader):
 
-            x = batch.permute(0,1,3,2) # B L*N l_his 7 - > B L*N 7 l_his
+            x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
             
             H = model(x)
 
-            B, L_N, C, L = x.shape
+            B,  C, L = x.shape
 
-            H = H.reshape(B * L_N * L, -1) # N_time_patch * dim
+            H = H.reshape(B * L, -1) # N_time_patch * dim
 
             logger.info('corresbonding H shape : {}'.format(H.shape))
 
