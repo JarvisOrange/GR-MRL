@@ -30,6 +30,8 @@ class VectorBase():
 
         self.load_related_json(dataset_src)
 
+        self.flag = 'source_train'
+
 
     def load_related_json(self, dataset_src):
 
@@ -39,15 +41,18 @@ class VectorBase():
              self.related_dict = json.load(f)
 
     
-    def query(self, q,  k):
-        distances, indices = self.index.search(q, k)
-        return [idx for idx in indices[0]]
+    def query(self, q,  k, index):
+        
+        if self.flag != 'source_train':
+            distances, indices = self.index.search(q, k)
+            return [idx for idx in indices[0]]
+        else:
+            distances, indices = self.index.search(q, k+1)
+            return [idx for idx in indices[0] if idx != index]
     
 
     def query_related(self, index, q, k):
-        temp_list =  self.query(q, k)
-
-        temp_list = [x for x in temp_list if x != index] # delete self
+        temp_list =  self.query(q, k, index)
 
         res = []
         for i in temp_list:

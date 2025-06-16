@@ -128,7 +128,7 @@ def exp_rag(logger=None):
 
     device = cfg['device']
 
-    temp, trg = cfg['dataset_src_trg'].split('_')
+    temp, _ = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
 
     embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
