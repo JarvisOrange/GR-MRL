@@ -140,7 +140,7 @@ def kmeans_pytorch(X, n_clusters, max_iter=100, tol=1e-4, device=None):
     return labels.cpu(), centers.cpu()
 
 
-def calc_metric(pred, y, flag = "train"):
+def calc_metric(pred, y):
     # input B, L
 
     MSE = torch.mean((pred - y)**2, dim = 0)
@@ -174,13 +174,16 @@ def adj_to_dict(adj):
                 
     
 
-class Feq_Loss(nn.Module):
+class My_Loss(nn.Module):
     def __init__(self):
-            super(Feq_Loss, self).__init__()
+        super(My_Loss, self).__init__()
             
     def forward(self, y_pred, y_true):
+        loss_tmp = ((y_pred - y_true)**2).mean()
+
         loss_feq = (torch.fft.rfft(y_pred, dim=1) - torch.fft.rfft(y_true, dim=1)).abs().mean()
-        return loss_feq
+        
+        return loss_tmp + loss_feq
     
 
 

@@ -78,10 +78,9 @@ class RoadDataProvider():
         self.source_data, self.target_data = cfg['target_data'].split('_')
         self.source_data = self.source_data.split('-')
 
-        self.target_data = self.target_data
         self.source_data = [n for n in self.source_data]
-
-        if flag == 'source_train' or flag == 'target_train' or flag == 'test':
+        
+        if flag == 'source_train':
             self.data_list = [RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) for i in range(3)]
 
             X_num = 0, X_num_dict = {}
@@ -89,7 +88,7 @@ class RoadDataProvider():
             his_num, pre_num, interval = self.data_list[0].get_data_info()
             
             for dataset in self.data_src_list:
-                temp = dataset.get_data_num()
+                temp = dataset.get_x_num()
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
@@ -103,9 +102,20 @@ class RoadDataProvider():
                 self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
                 self.Y[cur:cur + X_num_dict[dataset.name], :, :] = y
 
-                cur += dataset.get_data_num()
+                cur += dataset.get_x_num()
 
             #target test apply different epoch
+
+        if flag == 'target_train':
+            self.data_trg = RoadData(cfg, self.target_data, flag='target_train', logger=logger)
+
+            self.X, self.Y = self.data_trg.get_data()
+
+        if flag == 'test':
+            self.data_trg = RoadData(cfg, self.target_data, flag='test', logger=logger)
+
+            self.X, self.Y = self.data_trg.get_data()
+        
 
         if flag == 'pretrain':
             self.data_src_list = [RoadData(cfg, self.source_data[i], flag='pretrain', logger=logger) for i in range(3)]
@@ -115,7 +125,7 @@ class RoadDataProvider():
             his_num, pre_num, interval = self.data_src_list[0].get_data_info()
             
             for dataset in self.data_src_list:
-                temp = dataset.get_data_num()
+                temp = dataset.get_x_num()
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
@@ -127,10 +137,10 @@ class RoadDataProvider():
                 
                 self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
 
-                cur += dataset.get_data_num()
+                cur += dataset.get_x_num()
 
         if flag == 'time_cluster':
-            ### time patch
+            # time patch
             self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], flag='time_cluster', logger=logger) for i in range(3)]
 
             X_num = 0, X_num_dict = {}
@@ -138,7 +148,7 @@ class RoadDataProvider():
             his_num, pre_num, interval = self.data_src_list[0].get_data_info()
             
             for dataset in self.data_src_list:
-                temp = dataset.get_data_num()
+                temp = dataset.get_x_num()
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
@@ -154,7 +164,7 @@ class RoadDataProvider():
 
         
         if flag == 'road_cluster':
-            ### road
+            # road
             self.data_road_cluster_0 = RoadData(cfg, self.source_data[0], flag='road_cluster', logger=logger)
             self.data_road_cluster_1 = RoadData(cfg, self.source_data[1], flag='road_cluster', logger=logger)
             self.data_road_cluster_2 = RoadData(cfg, self.source_data[2], flag='road_cluster', logger=logger)
@@ -210,8 +220,8 @@ class RoadDataProvider():
             
 
         if flag == 'rag':
-            ### time cluster task have get the dataset and transfer into embed
-            ### this dataset is to get the dataset info and save into json
+            # time cluster task have get the dataset and transfer into embed
+            # this dataset is to get the dataset info and save into json
             self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], flag='rag', logger=logger) for i in range(3)]
 
             dataset_info_dict = {}
@@ -220,17 +230,17 @@ class RoadDataProvider():
 
             cur = 0
             for dataset in self.data_src_list:
-                data_num = dataset.get_data_num()
+                x_num = dataset.get_x_num()
                 road_num = dataset.get_road_num()
 
                 dataset_info_dict['name'] = {}
-                dataset_info_dict['name']['data_num'] = data_num * road_num
+                dataset_info_dict['name']['data_num'] = x_num * road_num
                 dataset_info_dict['name']['road_num'] = road_num
                 dataset_info_dict['name']['data_start_num'] = cur
-                dataset_info_dict['name']['data_end_num'] = cur + data_num * road_num
+                dataset_info_dict['name']['data_end_num'] = cur + x_num * road_num
                 dataset_info_dict['name']['adj'] = adj_to_dict(dataset.get_adj()) 
 
-                cur += cur + data_num * road_num
+                cur += cur + x_num * road_num
 
             json_path = '/Save/dataset_info/{}/info.json'.format(self.source_data)
             with open(json_path, 'w') as f:

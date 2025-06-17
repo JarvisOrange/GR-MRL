@@ -197,7 +197,7 @@ class RoadData():
         
     
 
-    def get_data_num(self):
+    def get_x_num(self):
         return self.x.shape[0]
     
     

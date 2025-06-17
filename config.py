@@ -28,7 +28,7 @@ cfg = {
             'target_train_lr': 0.0001,
         },
 
-        'test':{
+        'target_test':{
             'batch_size': 16
         },
     },

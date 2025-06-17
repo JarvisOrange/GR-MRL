@@ -84,20 +84,47 @@ def generate_related(dataset_src, time_embed_pool, logger):
         json.dump(related_dict, f1, indent=4)
 
 
-def generate_prompt(self, dataset_src, dataloader, vectorbase, logger):
-        model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
-        if not os.exist(model_path):
-            logger.info('please pretrain time patch encoder first.')
-            return 
+def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
         
-        model = TSFormer(cfg['TSFromer']).to(cfg['device'])
-        model.mode = 'test'
-        model.load_state_dict(torch.load(model_path))
+    model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
+    if not os.exist(model_path):
+        logger.info('please pretrain time patch encoder first.')
+        return 
+    
+    model = TSFormer(cfg['TSFromer']).to(cfg['device'])
+    model.mode = 'test'
+    model.load_state_dict(torch.load(model_path))
 
-        prompt_list = {}
 
-        k = cfg['retrieve_k']
+    save_flag = False
+    
+    if flag == 'target' and not os.exist(embed_path):
+        embed_path = './Save/time_embed/{}/embed_trg.pt'.format(dataset_src)
+        
+        num_embed = dataloader.dataset.get_x_num()
+        dim_embed = cfg['TSFormer']['out_channel']
 
+        time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
+
+        save_flag = True
+
+            
+    elif flag == 'test' and not os.exist(embed_path):
+        embed_path = './Save/time_embed/{}/embed_test.pt'.format(dataset_src)
+        
+        num_embed = dataloader.dataset.get_x_num()
+        dim_embed = cfg['TSFormer']['out_channel']
+        
+        time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
+
+        save_flag = True
+    
+    
+    prompt_list = {}
+
+    k = cfg['retrieve_k']
+
+    if save_flag == True:
         for index, batch in enumerate(dataloader):
             x, y = batch
             city = batch[0, 0 ,4]
@@ -109,37 +136,63 @@ def generate_prompt(self, dataset_src, dataloader, vectorbase, logger):
 
             B, C, L = x.shape
 
-            H = H.reshape(B *  L, -1) # N_time_patch,  dim
+            H = H.reshape(B *  L, -1).queeze(0) # ,  dim
             
-            related_list = self.query_related(index, self.vectors[index], k)
+            related_list = vectorbase.query_related(index, H, k)
 
             prompt_base = "Dataset Description: {}".format(dataset_description[city]) + \
-                 f"Dataset statisctis: The mean speed value of the dataset is {str(means)}" + \
-                 f"Task Description: Predict the next {str(cfg['pre_num'])} steps given the history data and corresponding tokens. " + \
-                 "Reference tokens can also be useful for prediction."
+                f"Dataset statisctis: The mean speed value of the dataset is {str(means)}" + \
+                f"Task Description: Predict the next {str(cfg['pre_num'])} steps given the history data and corresponding tokens. " + \
+                "Reference tokens can also be useful for prediction."
                 
-            
-        prompt_list[index] = {'index': index, 'ref': related_list, 'prompt': prompt_base, 'truth': y}
+            prompt_list[index] = {'index': index, 'ref': related_list, 'prompt': prompt_base, 'label': y}
 
-        return prompt_list
+            time_embed_pool[index, :] =  H.detach().cpu()
+        
+        torch.save(time_embed_pool,embed_path)
+    else:
+         for index, batch in enumerate(dataloader):
+            x, y = batch
+            city = batch[0, 0 ,4]
+            means = batch[0, 0, 5] 
+
+            x = batch.permute(0, 2, 1) # 1 l_his 7 - > 1 7 l_his
+            
+            H = model(x)
+
+            B, C, L = x.shape
+
+            H = H.reshape(B *  L, -1).queeze(0) # ,  dim
+            
+            related_list = vectorbase.query_related(index, H,  k)
+
+            prompt_base = "Dataset Description: {}".format(dataset_description[city]) + \
+                f"Dataset statisctis: The mean speed value of the dataset is {str(means)}" + \
+                f"Task Description: Predict the next {str(cfg['pre_num'])} steps given the history data and corresponding tokens. " + \
+                "Reference tokens can also be useful for prediction."
+                
+            prompt_list[index] = {'index': index, 'ref': related_list, 'prompt': prompt_base, 'label': y}
+    
+    return prompt_list
             
 
 def exp_rag(logger=None):
 
     device = cfg['device']
 
-    temp, _ = cfg['dataset_src_trg'].split('_')
+    temp, dataset_trg = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
 
-    embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
+    embed_path = './Save/time_embed/{}/embed_src.pt'.format(dataset_src)
     
-
     if os.exist(embed_path):
         time_embed_pool = torch.load(embed_path).to(device)
         time_embed_pool.requires_grad = False
     else:
         logger.info('please do time cluster first')
         return
+    
+    database = VectorBase(dataset_src, time_embed_pool)
 
     related_path = './Save/road_related/{}/result.json'.format(dataset_src)
 
@@ -147,33 +200,36 @@ def exp_rag(logger=None):
         logger.info('generate related road first')
         generate_related(dataset_src, time_embed_pool, logger)
 
-    database = VectorBase(dataset_src, time_embed_pool)
+   
     
-    database.mode = 'source_train'
+    flag = 'source_train'
+    database.update_mode(flag)
     source_provider = RoadDataProvider(cfg, flag='source_train', logger=logger)
     source_dataloader = source_provider.generate_dataloader()
-    src_prompt = generate_prompt(dataset_src, source_dataloader, logger)
+    src_prompt = generate_prompt(flag, dataset_src, source_dataloader, logger)
     src_json_path = 'Save/prompt/{}/src.json'.format(dataset_src, database)
     with open(src_json_path, 'w') as f:
-                json.dump(src_prompt , f, indent=4)
+        json.dump(src_prompt , f, indent=4)
 
-
-    database.mode = 'target_train'
-    target_provider = RoadDataProvider(cfg, flag='target_train', logger=logger)
+    
+    flag = 'target_train'
+    database.update_mode(flag)
+    target_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
     target_dataloader = target_provider.generate_dataloader()
-    trg_prompt = generate_prompt(dataset_src, target_dataloader, database)
+    trg_prompt = generate_prompt(flag, dataset_src, target_dataloader, database)
     trg_json_path = 'Save/prompt/{}/trg.json'.format(dataset_src)
     with open(trg_json_path, 'w') as f:
-                json.dump(trg_prompt , f, indent=4)
+        json.dump(trg_prompt , f, indent=4)
 
 
-    database.mode = 'test'
-    test_provider = RoadDataProvider(cfg, flag='test', logger=logger)
+    flag = 'test'
+    database.update_mode(flag)
+    test_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
     test_dataloader = test_provider.generate_dataloader()
-    test_json_path = generate_prompt(dataset_src, test_dataloader, database)
+    test_prompt = generate_prompt(flag, dataset_src, test_dataloader, database)
     test_json_path = 'Save/prompt/{}/test.json'.format(dataset_src)
     with open(test_json_path, 'w') as f:
-                json.dump(test_json_path , f, indent=4)
+        json.dump(test_prompt , f, indent=4)
     
 
     

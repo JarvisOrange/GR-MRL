@@ -43,7 +43,6 @@ def exp_time_cluster(dataset_src, logger=None):
         num_embed = dataloader.dataset.get_x_num()
         dim_embed = cfg['TSFormer']['out_channel']
 
-
         time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
 
         temp = 0
@@ -59,7 +58,7 @@ def exp_time_cluster(dataset_src, logger=None):
 
             logger.info('corresbonding H shape : {}'.format(H.shape))
 
-            time_embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu().numpy()
+            time_embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu()
 
             temp = x.shape[0] + temp
         
@@ -67,7 +66,7 @@ def exp_time_cluster(dataset_src, logger=None):
 
         time_embed_pool.requires_grad = False
 
-        torch.save(time_embed_pool,'./Save/time_embed/{}/embed.pt'.format(dataset_src))
+        torch.save(time_embed_pool,'./Save/time_embed/{}/embed_src.pt'.format(dataset_src))
 
         center, center_label = kmeans_pytorch(
         X=time_embed_pool , num_clusters=cfg['time_cluster_k'], device=device)

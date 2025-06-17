@@ -5,38 +5,69 @@ from peft import get_peft_config, get_peft_model, TaskType, LoraConfig, AdaLoraC
 from config import cfg
 from Model.TSFormer.TSmodel import *
 from Data.VectorBase import *
+from torch.nn.utils.rnn import pad_sequence
+
 
 
 class GR_MRL(nn.Module):
-    def __init__(self, mode='train'):
+    def __init__(self, mode='source_train'):
         super(GR_MRL, self).__init__()
 
         self.device = cfg['device']
         self.LLM_path = cfg['LLM_path']
         
-        self.mode = 'train'
+        self.mode = None
 
         temp, _= cfg['dataset_src_trg'].split('_')
-        dataset_src = ''.join(temp.split('-'))
+        self.dataset_src = ''.join(temp.split('-'))
 
-        self.set_LLM()
 
-        self.time_pattern  = torch.load('Save/time_pattern/{}/embed_{}.pt'.format(dataset_src, cfg['time_cluster_k']))
+        self.time_pattern  = torch.load('Save/time_pattern/{}/embed_{}.pt'.format(self.dataset_src, cfg['time_cluster_k']))
         self.time_pattern.requires_grad = False
-        
-        self.road_pattern  = torch.load('Save/road_pattern/{}/embed_{}.pt'.format(dataset_src, cfg['time_cluster_k']))
+
+        self.road_pattern  = torch.load('Save/road_pattern/{}/embed_{}.pt'.format(self.dataset_src, cfg['time_cluster_k']))
         self.road_pattern.requires_grad = False
 
-        embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
-        self.time_embed_pool = torch.load(embed_path).to(self.device)
-        self.time_embed_pool.requires_grad = False
+        # model part
+        self.set_LLM()
 
-        ###fix write a model to combine input vector with pattern
-        self.mapping_layer = nn.Linear(self.)
+        self.input_embed_dim = self.time_pattern.shape[1]
+        self.mapping_layer = nn.Linear(self.time_pattern.shape[1], self.word_embed_dim)
+
+        self.output_layer = nn.Linear(self.word_embed_dim, cfg['pre_num'])
+
+        self.dropout = nn.Dropout(cfg['dropout'])
+
+        self.update_embedding_layer()
 
 
-    def update_mode(self, mode='train'):
+    def update_embedding_layer(self):
+        if self.mode == 'source_train':
+            embed_path = './Save/time_embed/{}/embed_src.pt'.format(self.dataset_src)
+        elif self.mode == 'target_train':
+            embed_path = './Save/time_embed/{}/embed_trg.pt'.format(self.dataset_src)
+        elif self.mode == 'test':
+            embed_path = './Save/time_embed/{}/embed_test.pt'.format(self.dataset_src)
+            
+
+        time_embed_pool = torch.load(embed_path).to(self.device)
+        num_embed, embed_dim = time_embed_pool.shape
+        self.padding_idx = num_embed + 1
+
+        self.embedding_layer = nn.Embedding(
+            num_embeddings=num_embed+1,
+            embedding_dim=embed_dim,
+            padding_idx=self.padding_idx
+        )
+
+        self.embedding_layer[:num_embed] = time_embed_pool
+
+        self.embedding_layer.requires_grad = False
+    
+
+    def update_mode(self, mode='source_train'):
         self.mode = mode
+        self.update_embedding_layer()
 
 
     def set_LLM(self):
@@ -45,7 +76,7 @@ class GR_MRL(nn.Module):
             trust_remote_code = True,
             )
         
-        self.word_hidden_size = llm_config['hidden_size']
+        self.word_embed_dim = llm_config['hidden_size']
         
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.LLM_path,
@@ -63,22 +94,60 @@ class GR_MRL(nn.Module):
             pad_token = '[PAD]'
             self.tokenizer.add_special_tokens({'pad_token': pad_token})
             self.tokenizer.pad_token = pad_token
-    
+
+
+    def attention_weighted_sum(self, vectors):
+        #[b, d] * [d, k_t]
+        time_scores = torch.matmul(vectors, self.time_pattern.transpose(0, 1))
+        time_weights = F.softmax(time_scores, dim=1)  # [, k_t]
+        
+        #[b, d] * [d, k_r]
+        road_scores = torch.matmul(vectors, self.road_pattern.transpose(0, 1))
+        road_weights = F.softmax(road_scores, dim=1)  # [, k_r]
+        
+        time_weighted_sum = torch.matmul(time_weights, self.time_pattern)
+        road_weighted_sum = torch.matmul(road_weights, self.road_pattern)
+
+        return vectors + time_weighted_sum + road_weighted_sum
 
 
     def forward(self, batch_x):
 
-        ###fix
-        # with torch.zero_grad:
-        #     time_embed = 
+        index,  prompts, ref = batch_x['index'], batch_x['ref'], batch_x['prompt']
 
-        index,ref = batch_x[index], batch_x['ref']
+        ref = [torch.tensor(r).to(self.device) for r in ref]
 
-        prompt = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
-        prompt_embeddings = self.llm_model.get_input_embeddings()(prompt.to(x_enc.device))  # (batch, prompt_token, dim)
+        ref = pad_sequence(ref, batch_first=True, padding_value=self.padding_idx) #b max_len 
 
-        llama_enc_out = torch.cat([prompt_embeddings, enc_out], dim=1)
-        dec_out = self.llm_model(inputs_embeds=llama_enc_out).last_hidden_state
+        his_embed = self.embedding_layer(index) # b 1 d
+
+        his_embed = self.attention_weighted_sum(his_embed)
+
+        his_embed = self.mapping_layer(his_embed)
+
+        ref_embed = self.embedding_layer(ref) # b * max_len * d
+
+        ref_embed = self.mapping_layer(ref_embed)
+
+        #dataset description and task description    
+        prompt_desc = self.tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
+        prompt_desc_embed = self.llm.get_input_embeddings()(prompt_desc.to(self.device))   # (batch, prompt_token, dim)
+
+        prompt_his = ['History information:'] * len(index)
+        prompt_his = self.tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
+        prompt_his_embed =  self.llm.get_input_embeddings()(prompt_his.to(self.device)) # (batch, prompt_token, dim)
+
+        prompt_ref = ['Reference information:'] * len(index)
+        prompt_ref = self.tokenizer(prompt_ref, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
+        prompt_ref_embed =  self.llm.get_input_embeddings()(prompt_ref.to(self.device)) # (batch, prompt_token, dim)
+
+        llm_input = torch.hstack([prompt_desc_embed, prompt_his_embed, his_embed, prompt_ref_embed, ref_embed])
+
+        llm_output = self.llm(inputs_embeds=llm_input).last_hidden_state
+
+        output = self.output_layer(llm_output)
+
+        return output
 
 
 

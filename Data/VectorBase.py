@@ -10,7 +10,9 @@ from torch.utils.data import Dataset, DataLoader
 
 class PromptDataset(Dataset):
     def __init__(self, dataset_src, flag = 'src'):
-        path = './Save/prompt/{}/{}.json'.format(dataset_src,src)
+        path = './Save/prompt/{}/{}.json'.format(dataset_src, flag)
+
+        self.device = cfg['device']
         
         with open(path, 'r') as f:
              self.prompt = json.load(f)
@@ -18,15 +20,29 @@ class PromptDataset(Dataset):
 
     def __len__(self):
         return len(self.prompt)
+    
 
-    def __getitem__(self, index):
-        ###fix, rewrite prompt dataset to train
-        temp =  self.prompt[index]
-        return temp['index'], temp['ref'], temp['prompt'], temp['truth']
+    def __getitem__(self, id):
+        item = self.prompt[id]
+
+        index =  torch.tensor(item['index']).to(self.device)
+        ref = item['ref']
+        prompt = item['prompt']
+        label = item['label'].to(self.device)
+
+        return {
+            'index': index,
+            'ref': ref,
+            'prompt': prompt,
+            'label': label
+        }
+        
 
 
 class VectorBase():
-    def __init__(self, dataset_src, vectors):
+    def __init__(self, dataset_src, vectors, mode='source_train'):
+        self.mode= mode
+        
         self.vectors = vectors
         self.vectors.requires_grad = False
 
@@ -35,7 +51,12 @@ class VectorBase():
 
         self.load_related_json(dataset_src)
 
-        self.flag = 'source_train'
+    def load_vector(self):
+        pass
+
+    def update_mode(self, mode):
+        self.mode = mode
+        
 
 
     def load_related_json(self, dataset_src):
@@ -46,18 +67,19 @@ class VectorBase():
              self.related_dict = json.load(f)
 
     
-    def query(self, q,  k, index):
+    def query(self, index, vector, k):
+        q = self.vectors[index]
         
-        if self.flag != 'source_train':
-            distances, indices = self.index.search(q, k)
+        if self.mode != 'source_train':
+            distances, indices = self.index.search(vector, k)
             return [idx for idx in indices[0]]
         else:
-            distances, indices = self.index.search(q, k+1)
+            distances, indices = self.index.search(vector, k+1)
             return [idx for idx in indices[0] if idx != index]
     
 
-    def query_related(self, index, q, k):
-        temp_list =  self.query(q, k, index)
+    def query_related(self, q, k):
+        temp_list =  self.query(q, k)
 
         res = []
         for i in temp_list:
