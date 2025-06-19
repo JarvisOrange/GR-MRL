@@ -1,3 +1,8 @@
+
+
+time_k = 32
+road_k = 16
+
 cfg = {
     # 手动设置 tag
     # 0: try
@@ -94,9 +99,11 @@ cfg = {
 
     'laplacian_dim': 64,
 
-    'road_cluster_k': 16,
+    'time_cluster_k': time_k,
 
-    'time_cluster_k': 32,
+    'road_cluster_k': road_k,
+
+    
 
     'retrieve_k': 1,
 
@@ -108,8 +115,8 @@ cfg = {
 
     'TSFormer': {
         'patch_size':12,
-        'in_channel':1,
-        'out_channel':128, #输出的维度
+        'in_dim':1,
+        'out_dim':128, #输出的维度
 
         'dropout':0.1,
         'window_size': 288,
@@ -119,20 +126,29 @@ cfg = {
     },
 
     'GR_MRL': {
-        'time_expert': 32,
-        'road_expert': 16,
+        'time_expert': time_k,
+        'road_expert': road_k,
         'expert_dim': 64
     },
 
     'LLM_path': './LLM/glm-4-9b',
 
+    'lora_method': 'moelora',  # or lora?
+
+    'lora_rank': 8,
+    'lora_dropout': 0.1,
+    'lora_alpha': 32,
+
+    'target_modules': 'q_proj,v_proj',
+    'modules_to_save': 'embed_tokens,lm_head', ###tobefix
+
+    'top_k': 2,
 
     
 
     # 训练设置
 
     'drop_last': True,
-
 
 
     'validate_epoch': 10,

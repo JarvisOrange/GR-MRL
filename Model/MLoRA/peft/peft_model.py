@@ -39,7 +39,7 @@ from .tuners import (
     PrefixEncoder,
     PromptEmbedding,
     PromptEncoder,
-    MMOELoraModelS,
+    MMOELoraSTModel,
 )
 from .utils import (
     TRANSFORMERS_MODELS_TO_PREFIX_TUNING_POSTPROCESS_MAPPING,
@@ -63,7 +63,7 @@ PEFT_TYPE_TO_MODEL_MAPPING = {
     PeftType.PREFIX_TUNING: PrefixEncoder,
     PeftType.ADALORA: AdaLoraModel,
     PeftType.ADAPTION_PROMPT: AdaptionPromptModel,
-    PeftType.MMOELORAS: MMOELoraModelS,
+    PeftType.MMOELORAST: MMOELoraSTModel,
 }
 
 
@@ -1190,9 +1190,12 @@ class PeftModelForCausalLMShared(PeftModelForCausalLM):
 
         super().__init__(model, peft_config, adapter_name)
 
-        self.expert_num = peft_config.expert_num
-        self.task_num = peft_config.task_num
-        self.te_dim = peft_config.task_embedding_dim
+        self.expert_t_num = peft_config.expert_t_num
+        self.expert_r_num = peft_config.expert_r_num
+        self.gate_embed_dim = peft_config.gate_embed_dim
+        self.gate_embed_path = peft_config.gate_embed_path
+        self.top_k = peft_config.top_k
+        
         self.active_adapter = adapter_name
 
         self.lora_task_embedding = nn.ModuleDict({})

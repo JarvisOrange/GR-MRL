@@ -31,7 +31,7 @@ def get_peft_model_state_dict(model, state_dict=None, adapter_name="default"):
     if state_dict is None:
         state_dict = model.state_dict()
     if config.peft_type in (PeftType.LORA, PeftType.ADALORA,
-                            PeftType.MMOELORAS):
+                            PeftType.MMOELORAST):
         # to_return = lora_state_dict(model, bias=model.peft_config.bias)
         # adapted from `https://github.com/microsoft/LoRA/blob/main/loralib/utils.py`
         # to be used directly with the state dict which is necessary when using DeepSpeed or FSDP
@@ -101,7 +101,7 @@ def set_peft_model_state_dict(model, peft_model_state_dict, adapter_name="defaul
         state_dict = peft_model_state_dict
 
     if config.peft_type in (PeftType.LORA, PeftType.ADALORA,
-                            PeftType.MMOELORAS):
+                            PeftType.MMOELORAST):
         peft_model_state_dict = {}
         for k, v in state_dict.items():
             if "lora_" in k:

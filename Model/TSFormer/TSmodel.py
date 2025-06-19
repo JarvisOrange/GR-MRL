@@ -22,7 +22,7 @@ class TSFormer(nn.Module):
         super().__init__()
         # patch_size, in_channel, out_channel, dropout, mask_size, mask_ratio, L, spectral = model_cfg['patch_size'], model_cfg['in_channel'], model_cfg['out_channel'], model_cfg['dropout'], model_cfg['mask_size'], model_cfg['mask_ratio'], model_cfg['L'], model_cfg['spectral']
         patch_size, in_channel, out_channel, dropout, mask_size, mask_ratio, n_layer = \
-            model_cfg['patch_size'], model_cfg['in_channel'], model_cfg['out_channel'], \
+            model_cfg['patch_size'], model_cfg['in_dim'], model_cfg['out_dim'], \
             model_cfg['dropout'], model_cfg['mask_size'], model_cfg['mask_ratio'], model_cfg['n_layer']
         
         self.patch_size = patch_size

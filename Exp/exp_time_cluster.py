@@ -41,7 +41,7 @@ def exp_time_cluster(dataset_src, logger=None):
 
 
         num_embed = dataloader.dataset.get_x_num()
-        dim_embed = cfg['TSFormer']['out_channel']
+        dim_embed = cfg['TSFormer']['out_dim']
 
         time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
 

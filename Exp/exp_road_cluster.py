@@ -27,7 +27,7 @@ def exp_road_cluster(dataset_src, logger=None):
     model.load_state_dict(torch.load(model_path))
 
     K = cfg['road_cluster_k']
-    dim_embed = cfg['TSFormer']['out_channel']
+    dim_embed = cfg['TSFormer']['out_dim']
 
     road_pattern = torch.zeros([K, dim_embed]).float().cpu()
 

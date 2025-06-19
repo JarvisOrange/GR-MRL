@@ -102,7 +102,7 @@ def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_t
         embed_path = './Save/time_embed/{}/embed_trg.pt'.format(dataset_src)
         
         num_embed = dataloader.dataset.get_x_num()
-        dim_embed = cfg['TSFormer']['out_channel']
+        dim_embed = cfg['TSFormer']['out_dim']
 
         time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
 
@@ -113,7 +113,7 @@ def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_t
         embed_path = './Save/time_embed/{}/embed_test.pt'.format(dataset_src)
         
         num_embed = dataloader.dataset.get_x_num()
-        dim_embed = cfg['TSFormer']['out_channel']
+        dim_embed = cfg['TSFormer']['out_dim']
         
         time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
 

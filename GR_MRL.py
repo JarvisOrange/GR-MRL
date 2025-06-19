@@ -1,11 +1,14 @@
 import torch
 import torch.nn as nn
-from transformers import AutoModel, AutoConfig, AutoTokenizer
-from peft import get_peft_config, get_peft_model, TaskType, LoraConfig, AdaLoraConfig
+
 from config import cfg
 from Model.TSFormer.TSmodel import *
 from Data.VectorBase import *
 from torch.nn.utils.rnn import pad_sequence
+
+from transformers import AutoModel, AutoConfig, AutoTokenizer
+from Model.MLoRA.peft import PeftModel, TaskType, get_peft_model
+from Model.MLoRA.peft import MMOELoraSTConfig
 
 
 
@@ -94,6 +97,41 @@ class GR_MRL(nn.Module):
             pad_token = '[PAD]'
             self.tokenizer.add_special_tokens({'pad_token': pad_token})
             self.tokenizer.pad_token = pad_token
+
+        lora_rank = cfg['lora_rank']
+        lora_dropout = cfg['lora_dropout']
+        lora_alpha = cfg['lora_alpha']
+
+        if cfg['lora_method'] == 'moelora':
+            TargetLoraConfig = MMOELoraSTConfig
+
+            gate_embed_path = 'Save/time_pattern/{}/embed.pt'.format(self.dataset_src) + ';' \
+                'Save/road_pattern/{}/embed.pt'.format(self.dataset_src)
+                               
+            kwargs = {
+                  "gate_embed_dim": cfg['TSFormer']['out_dim'],
+                  'gate_embed_path': gate_embed_path,
+                  "expert_t_num": cfg['time_cluster_k'],
+                  "expert_r_num": cfg['road_cluster_k'],
+                  'top_k': cfg['top_k']
+                  }
+            
+            task_type = TaskType.CAUSAL_LMS
+            target_modules = cfg['target_modules'].split(',')
+            modules_to_save = cfg['modules_to_save'].split(',')
+
+
+        peft_config = TargetLoraConfig(
+            task_type=task_type,
+            target_modules=target_modules,
+            inference_mode=False,
+            r=lora_rank, lora_alpha=lora_alpha,
+            lora_dropout=lora_dropout,
+            modules_to_save=modules_to_save,
+            **kwargs
+        )
+        model = get_peft_model(model, peft_config)
+
 
 
     def attention_weighted_sum(self, vectors):
