@@ -75,7 +75,7 @@ class GR_MRL(nn.Module):
 
     def set_LLM(self):
         llm_config = AutoConfig.from_pretrained(
-            self.LLM_path / 'config.json',
+            self.LLM_path + '/config.json',
             trust_remote_code = True,
             )
         
