@@ -1,7 +1,7 @@
 Raw_Dataset_Zip/
 Raw_Dataset/
 Bigscity-LibCity-master/
-output_error/
+output_server/
 test.sh
 __pycache__/
 Cache/
@@ -10,5 +10,4 @@ LLM/
 Raw_Data/
 Checkpoints/
 .DS_Store/
-Cache/
 Output_Server/

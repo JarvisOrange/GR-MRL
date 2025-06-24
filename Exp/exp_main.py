@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+parent_dir = str(Path(__file__).resolve().parent.parent)
+sys.path.append(parent_dir)
+
+
 import os
 import torch
 from torch import nn, optim
@@ -11,8 +17,6 @@ from config import cfg
 from utils import Feq_Loss
 from tqdm import tqdm
 import time
-
-
 
 def exp_main(logger=None):
     device = cfg['device']
