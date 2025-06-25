@@ -1,6 +1,5 @@
 import numpy as np
 import datetime
-from config import cfg
 
 data_dict = {
     "B": '2017-01-01',

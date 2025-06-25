@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-from config import cfg
 from Model.TSFormer.TSmodel import *
 from Data.VectorBase import *
 from torch.nn.utils.rnn import pad_sequence
@@ -12,7 +11,7 @@ from Model.MLoRA.peft import MMOELoraSTConfig
 
 
 class GR_MRL(nn.Module):
-    def __init__(self, mode='source_train'):
+    def __init__(self, cfg, mode='source_train'):
         super(GR_MRL, self).__init__()
 
         self.device = cfg['device']

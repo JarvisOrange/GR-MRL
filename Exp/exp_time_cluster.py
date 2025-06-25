@@ -6,7 +6,6 @@ sys.path.append(parent_dir)
 import os
 import torch
 from GR_MRL import GR_MRL
-from config import cfg
 from utils import kmeans_pytorch
 from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
@@ -15,7 +14,9 @@ import copy
 
 
 
-def exp_time_cluster(dataset_src, logger=None):
+def exp_time_cluster(cfg, logger=None):
+    debug  = cfg['debug']
+    
     device = cfg['device']
 
     temp, _ = cfg['dataset_src_trg'].split('_')

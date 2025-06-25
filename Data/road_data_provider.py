@@ -1,11 +1,12 @@
-from torch.utils.data import Data, Dataset, DataLoader
+
+from torch.utils.data import Dataset, DataLoader
 import os
 import numpy as np
 import pandas as pd
 import json
 from utils import *
 
-from road_data import RoadData
+from .road_data import RoadData
 
 
 # pretrain dataset(mask) flag pretrain
@@ -18,7 +19,7 @@ from road_data import RoadData
 
 
 class RoadDataset(Dataset):
-    def __init__(self, flag, X, Y=None, device=None):
+    def __init__(self, flag, X, Y, device=None):
         super(RoadDataset,self).__init__()
         self.X = X
         self.Y = Y
@@ -69,13 +70,15 @@ class RoadDataset(Dataset):
 
 class RoadDataProvider():
     def __init__(self, cfg, flag, logger=None):
+        
         super(RoadDataProvider, self).__init__()
         
         self.flag = flag
-        self,cfg = cfg
+        
+        self.cfg = cfg
         
 
-        self.source_data, self.target_data = cfg['target_data'].split('_')
+        self.source_data, self.target_data = cfg['dataset_src_trg'].split('_')
         self.source_data = self.source_data.split('-')
 
         self.source_data = [n for n in self.source_data]
@@ -83,7 +86,8 @@ class RoadDataProvider():
         if flag == 'source_train':
             self.data_list = [RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) for i in range(3)]
 
-            X_num = 0, X_num_dict = {}
+            X_num = 0
+            X_num_dict = {}
         
             his_num, pre_num, interval = self.data_list[0].get_data_info()
             
@@ -118,9 +122,10 @@ class RoadDataProvider():
         
 
         if flag == 'pretrain':
-            self.data_src_list = [RoadData(cfg, self.source_data[i], flag='pretrain', logger=logger) for i in range(3)]
+            self.data_src_list = [RoadData(cfg, self.source_data[i], flag, logger=logger) for i in range(3)]
 
-            X_num = 0, X_num_dict = {}
+            X_num = 0
+            X_num_dict = {}
         
             his_num, pre_num, interval = self.data_src_list[0].get_data_info()
             
@@ -130,10 +135,13 @@ class RoadDataProvider():
                 X_num_dict[dataset.name] = temp
                 
             self.X = np.zeros([X_num, his_num, 7], dtype=float)
+            self.Y = None
 
             cur = 0
             for dataset in self.data_src_list:
                 x = dataset.get_data()
+                print(x.shape)
+                print(X_num_dict[dataset.name])
                 
                 self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
 
@@ -143,7 +151,8 @@ class RoadDataProvider():
             # time patch
             self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], flag='time_cluster', logger=logger) for i in range(3)]
 
-            X_num = 0, X_num_dict = {}
+            X_num = 0
+            X_num_dict = {}
         
             his_num, pre_num, interval = self.data_src_list[0].get_data_info()
             
@@ -153,6 +162,7 @@ class RoadDataProvider():
                 X_num_dict[dataset.name] = temp
                 
             self.X = np.zeros([X_num, his_num, 7], dtype=float)
+            self.Y = None
 
             cur = 0
             for dataset in self.data_src_list:
@@ -170,7 +180,8 @@ class RoadDataProvider():
             self.data_road_cluster_2 = RoadData(cfg, self.source_data[2], flag='road_cluster', logger=logger)
             self.data_road_cluster_list = [self.data_road_cluster_0, self.data_road_cluster_1, self.data_road_cluster_2]
             
-            R_num = 0, R_num_dict = {}
+            R_num = 0
+            R_num_dict = {}
 
             
             for dataset in self.data_road_cluster_list:
@@ -260,6 +271,7 @@ class RoadDataProvider():
         else: # source_train target_train test rag time_cluster road_cluster don't need shuffle
             bs = 1
 
+        
         R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
 
         dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = shuffle, drop_last=drop_last)
@@ -268,7 +280,7 @@ class RoadDataProvider():
     
     
     def generate_pretrain_dataloader(self):
-        bs = self.cfg['flag']['self.flag']['batch_size']
+        bs = self.cfg['flag'][self.flag]['batch_size']
         drop_last = self.cfg['drop_last']
 
         train_ratio, val_ratio, test_ratio = self.cfg['flag']['pretrain']['train_val_test']
@@ -279,18 +291,18 @@ class RoadDataProvider():
         X_test = self.X[int((1-test_ratio)*length) : ]
         
 
-        indices = np.random.permutation(self.X_train.shape[0])
+        indices = np.random.permutation(X_train.shape[0])
         X_train_shuffle = X_train[indices]
 
-        indices = np.random.permutation(self.X_val.shape[0])
+        indices = np.random.permutation(X_val.shape[0])
         X_val_shuffle = X_val[indices]
 
-        indices = np.random.permutation(self.X_test.shape[0])
+        indices = np.random.permutation(X_test.shape[0])
         X_test_shuffle = X_test[indices]
 
-        R_train_dataset = RoadDataset(self.flag, X_train_shuffle, device = self.cfg['device'])
-        R_val_dataset = RoadDataset(self.flag, X_val_shuffle, device = self.cfg['device'])
-        R_test_dataset = RoadDataset(self.flag, X_test_shuffle, device = self.cfg['device'])
+        R_train_dataset = RoadDataset(self.flag, X_train_shuffle, Y=None, device = self.cfg['device'])
+        R_val_dataset = RoadDataset(self.flag, X_val_shuffle, Y=None, device = self.cfg['device'])
+        R_test_dataset = RoadDataset(self.flag, X_test_shuffle, Y=None, device = self.cfg['device'])
 
         train_dataloader = DataLoader(R_train_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
 

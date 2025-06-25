@@ -39,7 +39,7 @@ class PositionalEncoding(nn.Module):
         B,  L_P, d = input.shape
 
         # temporal embedding
-        index = index.contiguous().view(B,L_P,1)
+        index = index.contiguous().view(B, L_P, 1)
         input = self.tem_pe(input.view(B, L_P, d), index=index)
         
         # absolute positional embedding

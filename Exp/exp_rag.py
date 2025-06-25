@@ -7,7 +7,6 @@ sys.path.append(parent_dir)
 import os
 import torch
 from GR_MRL import GR_MRL
-from config import cfg
 from utils import kmeans_pytorch
 from Data.road_data_provider import *
 from Model.TSFormer.TSmodel import *
@@ -183,7 +182,9 @@ def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_t
     return prompt_list
             
 
-def exp_rag(logger=None):
+def exp_rag(cfg, logger=None):
+    
+    debug  = cfg['debug']
 
     device = cfg['device']
 

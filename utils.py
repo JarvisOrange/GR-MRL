@@ -37,7 +37,7 @@ def get_logger(config, name=None):
     Returns:
         Logger: logger
     """
-    log_dir = './log'
+    log_dir = './Log'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     log_filename = '{}-{}-{}.log'.format(config['exp_tag'],
@@ -150,9 +150,9 @@ def calc_metric(pred, y):
 
 
 def unnorm(x ,means, stds):
-    B, LL, N = x.shape
-    means = means.expand(B, LL, N)
-    stds = stds.expand(B, LL, N)
+    B, LL = x.shape
+    means = means.expand(B, LL)
+    stds = stds.expand(B, LL)
     return x * stds + means
 
 

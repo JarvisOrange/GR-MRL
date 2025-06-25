@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import gc
-from TSFormer.Transformer_layers import TransformerLayers
-from TSFormer.mask import MaskGenerator
-from TSFormer.patch import Patch
-from TSFormer.positional_encoding import PositionalEncoding
+from .Transformer_layers import TransformerLayers
+from .mask import MaskGenerator
+from .patch import Patch
+from .positional_encoding import PositionalEncoding
 
 
 def unshuffle(shuffled_tokens):
@@ -30,7 +30,7 @@ class TSFormer(nn.Module):
         self.position_feature = 1 # index of time step
         self.mode = mode
 
-        self.patch = Patch(patch_size, in_channel, out_channel, spectral=False)
+        self.patch = Patch(patch_size, in_channel, out_channel)
         self.pe = PositionalEncoding(out_channel, dropout=dropout)
         
         self.mask  = MaskGenerator(mask_size, mask_ratio)
@@ -39,7 +39,7 @@ class TSFormer(nn.Module):
         self.decoder = TransformerLayers(out_channel, 1)
         self.encoder_2_decoder = nn.Linear(out_channel, out_channel)
         
-        self.mask_token = nn.Parameter(torch.zeros(1, 1, 1, out_channel))
+        self.mask_token = nn.Parameter(torch.zeros(1, 1,  out_channel))
         
         nn.init.uniform_(self.mask_token, -0.02, 0.02)
         
@@ -48,24 +48,31 @@ class TSFormer(nn.Module):
     def _forward_pretrain(self, input):
         # input : [B, 7, L]
         B, C, L = input.shape
-        position = input[:,self.position_feature,:].unsqueeze(2)
+        position = input[:, self.position_feature, :].unsqueeze(1)
+        
         pos_indices = torch.arange(0, L, self.patch_size)
+        
         position = position[:,:,pos_indices]
+
 
         # position : [B, 1, L/P]
         position = position // self.patch_size
     
         # B, 1, L
-        input = input[:,self.seleted_feature,:].unsqueeze(2)
+        input = input[:,self.seleted_feature,:].unsqueeze(1)
 
         # get patches and exec input embedding
+        
         patches = self.patch(input)             # B, d, L/P
         patches = patches.transpose(-1, -2)     # B, L/P, d
         
         # positional embedding
         # patches : [B, L/P, d]
         # position : [B, 1, L/P]
+        
+        
         patches = self.pe(patches, index=position.long()) # (B, L_P, d)
+    
         
         
         
@@ -74,7 +81,7 @@ class TSFormer(nn.Module):
         # 25, 75
         unmasked_token_index, masked_token_index = self.mask()
 
-        encoder_input = patches[:, :, unmasked_token_index, :]        
+        encoder_input = patches[:, unmasked_token_index, :]        
 
         # encoder
         H = self.encoder(encoder_input)         # B, L/P*(1-r), d
@@ -85,10 +92,12 @@ class TSFormer(nn.Module):
         H_unmasked = H
 
 
-        # arg1 : [B,  len(mti), d].  arg2 : [B, 1, L/P]
+        # Enmbed : [B,  len(mti), d].  Mask index : [B, 1, L/P]
         masked_token_index_inpe = torch.tensor(masked_token_index)
+
         # position : [B, 1, len(mask_token_index)]
         indices = masked_token_index_inpe.expand(B,  1, len(masked_token_index))
+
         # pe input : patches : [B, len(mti), d]. position : [B, 1, len(mti)]
         H_masked = self.pe(self.mask_token.expand(B,  len(masked_token_index_inpe), H.shape[-1]), index=indices.long())
         

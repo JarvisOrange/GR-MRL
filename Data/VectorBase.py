@@ -1,20 +1,21 @@
+import sys
+from pathlib import Path
+parent_dir = str(Path(__file__).resolve().parent.parent)
+sys.path.append(parent_dir)
+
 from tqdm import tqdm
 import numpy as np 
 import json
 import torch
 import numpy as np
 import torch.nn.functional as F
-from config import cfg
 import faiss
 from torch.utils.data import Dataset, DataLoader
 
-import sys
-from pathlib import Path
-parent_dir = str(Path(__file__).resolve().parent.parent)
-sys.path.append(parent_dir)
+
 
 class PromptDataset(Dataset):
-    def __init__(self, dataset_src, flag = 'src'):
+    def __init__(self, cfg, dataset_src, flag = 'src'):
         path = './Save/prompt/{}/{}.json'.format(dataset_src, flag)
 
         self.device = cfg['device']
