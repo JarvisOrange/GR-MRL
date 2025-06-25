@@ -54,7 +54,7 @@ def exp_pretrain(cfg, logger=None):
 
         ########################################
         #   train
-        for batch in tqdm(train_dataloader, desc='Pretrain train Epoch {}:'.format(i), leave=False):
+        for batch in train_dataloader:
             total_loss = []
             total_mae = []
             total_mse = []
@@ -92,11 +92,11 @@ def exp_pretrain(cfg, logger=None):
             if debug: break
         
         logger.info('Epochs {}/{} Start'.format(i, epochs))
-        logger.info('*Training MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}, normed MSE : {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape),np.mean(total_loss)))
+        logger.info('* Training MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}, normed MSE : {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape),np.mean(total_loss)))
         
         ############################################ 
         # validation
-        for batch in tqdm(val_dataloader, desc='Pretrain val Epoch {}:'.format(i), leave=False):
+        for batch in val_dataloader:
             total_loss = []
             total_mae = []
             total_mse = []
@@ -140,11 +140,11 @@ def exp_pretrain(cfg, logger=None):
             best_loss = mae_loss
             torch.save(model.state_dict(), model_dir  + 'best_model.pt')
             logger.info('Best model Saved at Epoch {}'.format(i))
-        logger.info('This epoch costs {:.5}s'.format(time.time()-time_1))
+        
         
     #####################################
     # test
-        for batch in tqdm(test_dataloader, desc='Pretrain test Epoch {}:'.format(i), leave=False):
+        for batch in test_dataloader:
             total_loss = []
             total_mae = []
             total_mse = []
@@ -183,6 +183,8 @@ def exp_pretrain(cfg, logger=None):
 
         logger.info('*** Test MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape)))
         
+
         logger.info('Epochs {}/{} Ends :)'.format(i, epochs))
+        logger.info('This epoch costs {:.5}s'.format(time.time()-time_1))
         
         if debug: exit(0)

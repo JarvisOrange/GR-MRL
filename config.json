@@ -12,9 +12,9 @@
 
     "flag":  {
         "pretrain": {
-                "batch_size": 32, 
+                "batch_size": 128, 
                 "epoch": 1000,
-                "lr" : 1e-5,
+                "lr" : 5e-5,
                 "train_val_test":[0.7, 0.1, 0.2]
         },
         "source_train":{
