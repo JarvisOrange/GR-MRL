@@ -52,10 +52,10 @@ class RoadDataset(Dataset):
              
             x = self.X[index]
             y = self.Y[index]
-            x.requires_grad = False
-            y.requires_grad = False
             x = torch.from_numpy(x).float().to(self.device)
             y = torch.from_numpy(y).float().to(self.device)
+            x.requires_grad = False
+            y.requires_grad = False
             return x, y
             
 
@@ -91,20 +91,20 @@ class RoadDataProvider():
         
             his_num, pre_num, interval = self.data_list[0].get_data_info()
             
-            for dataset in self.data_src_list:
+            for dataset in self.data_list:
                 temp = dataset.get_x_num()
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
             self.X = np.zeros([X_num, his_num, 7], dtype=float)
-            self.Y = np.zeros([X_num, pre_num, 7], dtype=float)
+            self.Y = np.zeros([X_num, pre_num], dtype=float)
 
             cur = 0
             for dataset in self.data_list:
                 x, y = dataset.get_data()
                 
                 self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
-                self.Y[cur:cur + X_num_dict[dataset.name], :, :] = y
+                self.Y[cur:cur + X_num_dict[dataset.name], :] = y
 
                 cur += dataset.get_x_num()
 
@@ -207,7 +207,7 @@ class RoadDataProvider():
 
             ch_score, db_score = metrics
 
-            logger.info(f"Road Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
+            logger.info(f"$$$ Road Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
 
 
             self.road_cluster_label = cluster_label.numpy()
@@ -246,30 +246,43 @@ class RoadDataProvider():
         if flag == 'rag':
             # time cluster task have get the dataset and transfer into embed
             # this dataset is to get the dataset info and save into json
-            self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], flag='rag', logger=logger) for i in range(3)]
 
-            dataset_info_dict = {}
-        
-            his_num, pre_num, interval = self.data_src_list[0].get_data_info()
+            temp, _ = cfg['dataset_src_trg'].split('_')
+            dataset_src = ''.join(temp.split('-'))
+            save_dir = './Save/dataset_info/{}/'.format(dataset_src)
+            ensure_dir(save_dir)
 
-            cur = 0
-            for dataset in self.data_src_list:
-                x_num = dataset.get_x_num()
-                road_num = dataset.get_road_num()
+            json_path = save_dir + 'info.json'
 
-                dataset_info_dict['name'] = {}
-                dataset_info_dict['name']['data_num'] = x_num * road_num
-                dataset_info_dict['name']['road_num'] = road_num
-                dataset_info_dict['name']['data_start_num'] = cur
-                dataset_info_dict['name']['data_end_num'] = cur + x_num * road_num
-                dataset_info_dict['name']['adj'] = adj_to_dict(dataset.get_adj()) 
+            if os.path.exists(json_path): 
+                logger.info("{} already exists".format(json_path))
 
-                cur += cur + x_num * road_num
+            else:
+                self.data_rag_list = [RoadData(cfg, self.source_data[i], flag='rag', logger=logger) for i in range(3)]
 
-            json_path = '/Save/dataset_info/{}/info.json'.format(self.source_data)
-            with open(json_path, 'w') as f:
-                json.dump(dataset_info_dict, f, indent=4)
-        
+                dataset_info_dict = {}
+            
+                his_num, pre_num, interval = self.data_rag_list[0].get_data_info()
+
+                cur = 0
+                for dataset in self.data_rag_list:
+                    name = dataset.name
+                    x_num = dataset.get_x_num()
+                    road_num = dataset.get_road_num()
+
+                    dataset_info_dict[name] = {}
+                    dataset_info_dict[name]['data_num'] = x_num
+                    dataset_info_dict[name]['road_num'] = road_num
+                    dataset_info_dict[name]['start_num'] = cur
+                    dataset_info_dict[name]['end_num'] = cur + x_num
+                    dataset_info_dict[name]['adj'] = adj_to_dict(dataset.get_adj()) 
+
+                    cur += cur + x_num * road_num
+                    
+                with open(json_path, 'w') as f:
+                    json.dump(dataset_info_dict, f, indent=4)
+            
+
     def generate_dataloader(self):
         drop_last = False
         shuffle = False

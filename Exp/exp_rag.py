@@ -52,8 +52,7 @@ def generate_related(dataset_src, time_embed_pool, logger):
 
     related_dict = {}
 
-    for index in range(time_embed_pool.shape[0]):
-        related_dict = {}
+    for index in tqdm(range(time_embed_pool.shape[0])):
         
         if index < index_split_based_city[1]: # city 0
             city_flag = 0
@@ -66,6 +65,11 @@ def generate_related(dataset_src, time_embed_pool, logger):
         start_num = start_num_list[city_flag]
         end_num = end_num_list[city_flag]
         neighbor_dict = neighbor_list[city_flag]
+        
+        # dict from json , keys are str, so it will be turn into int
+        neighbor_dict = {int(k): v for k, v in neighbor_dict.items()}
+
+        result = []
 
         # next time step's self feature
         if index + road_num >= end_num: 
@@ -75,31 +79,36 @@ def generate_related(dataset_src, time_embed_pool, logger):
 
         # next time step's neighbor  
         road_id = (index - start_num) % road_num
-        
+
         spatial_related_index = \
             [index + (neighbor - road_id) + road_num  \
                 for neighbor in neighbor_dict[road_id] \
                 if index + (neighbor - road_id) + road_num < end_num] 
-        result += time_related_index + spatial_related_index
+    
+
+        result = time_related_index + spatial_related_index
 
         related_dict[index] = result
 
-    path = './Save/road_related/{}/result.json'.format(dataset_src)
+
+    path = './Save/related/{}/result.json'.format(dataset_src)
 
     with open(path, 'w') as f1:
         json.dump(related_dict, f1, indent=4)
 
+    logger.info("^.^ generate result.json in {} Success".format(path))
 
-def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
+
+def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
         
     model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
     if not os.path.exists(model_path):
-        logger.info('please pretrain time patch encoder first.')
+        logger.info(':(  please pretrain time patch encoder first.')
         return 
     
     model = TSFormer(cfg['TSFormer']).to(cfg['device'])
-    model.mode = 'test'
     model.load_state_dict(torch.load(model_path))
+    model.mode = 'test'
 
 
     save_flag = False
@@ -131,20 +140,22 @@ def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_t
     k = cfg['retrieve_k']
 
     if save_flag == True:
-        for index, batch in enumerate(dataloader):
+        for index, batch in tqdm(enumerate(dataloader)):
+
             x, y = batch
-            city = batch[0, 0 ,4]
-            means = batch[0, 0, 5] 
 
-            x = batch.permute(0, 2, 1) # 1 l_his 7 - > 1 7 l_his
+            city = int(x[0, 0,4].detach().cpu().numpy())
+            means = x[0, 0, 5].detach().cpu().numpy()
+
+            x = x.permute(0, 2, 1) # B l_his 7 - > B 7 l_his
+
+            H = model(x)  #tobefix, H.shape is wrong
+
+            B, L, D = H.shape # B * L, D
+
+            H = H.reshape(B * L ,D).detach()
             
-            H = model(x)
-
-            B, C, L = x.shape
-
-            H = H.reshape(B *  L, -1).queeze(0) # ,  dim
-            
-            related_list = vectorbase.query_related(index, H, k)
+            related_list = vectorbase.query_related(H, k)
 
             prompt_base = "Dataset Description: {}".format(dataset_description[city]) + \
                 f"Dataset statisctis: The mean speed value of the dataset is {str(means)}" + \
@@ -155,22 +166,25 @@ def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_t
 
             time_embed_pool[index, :] =  H.detach().cpu()
         
-        torch.save(time_embed_pool,embed_path)
+        torch.save(time_embed_pool, embed_path)
+        logger.info("Save {} Embed in {}".format(flag, embed_path))
     else:
-         for index, batch in enumerate(dataloader):
+         for index, batch in tqdm(enumerate(dataloader)):
             x, y = batch
-            city = batch[0, 0 ,4]
-            means = batch[0, 0, 5] 
-
-            x = batch.permute(0, 2, 1) # 1 l_his 7 - > 1 7 l_his
             
-            H = model(x)
-
-            B, C, L = x.shape
-
-            H = H.reshape(B *  L, -1).queeze(0) # ,  dim
+            city = int(x[0, 0,4].detach().cpu().numpy())
+            means = x[0, 0, 5].detach().cpu().numpy()
             
-            related_list = vectorbase.query_related(index, H,  k)
+
+            x = x.permute(0, 2, 1) # B l_his 7 - > B 7 l_his
+
+            H = model(x) 
+
+            B, L, D = H.shape # B * L, D
+
+            H = H.reshape(B * L ,D).detach()
+            
+            related_list = vectorbase.query_related(H,  k)
 
             prompt_base = "Dataset Description: {}".format(dataset_description[city]) + \
                 f"Dataset statisctis: The mean speed value of the dataset is {str(means)}" + \
@@ -194,51 +208,64 @@ def exp_rag(cfg, logger=None):
     embed_path = './Save/time_embed/{}/embed_src.pt'.format(dataset_src)
     
     if os.path.exists(embed_path):
-        time_embed_pool = torch.load(embed_path).to(device)
-        time_embed_pool.requires_grad = False
+        time_embed_pool = torch.load(embed_path).cpu().numpy()
+        
     else:
-        logger.info('please do time cluster first')
+        logger.info(':( please do time cluster first!')
         return
     
-    database = VectorBase(dataset_src, time_embed_pool)
 
-    related_path = './Save/road_related/{}/result.json'.format(dataset_src)
+    save_dir = './Save/related/{}/'.format(dataset_src)
+    ensure_dir(save_dir)
+    related_path = save_dir + 'result.json'.format(dataset_src)
+
+     # rag_provider is to save some improtant json file
+    rag_provider =  RoadDataProvider(cfg, flag='rag', logger=logger)
 
     if not os.path.exists(related_path):
-        logger.info('generate related road first')
+        logger.info(':( generate related json first!')
         generate_related(dataset_src, time_embed_pool, logger)
 
-   
+    save_dir = 'Save/prompt/{}/'.format(dataset_src)
+    ensure_dir(save_dir)
+
+    database = VectorBase(dataset_src, time_embed_pool)
     
     flag = 'source_train'
     database.update_mode(flag)
-    source_provider = RoadDataProvider(cfg, flag='source_train', logger=logger)
+    source_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
     source_dataloader = source_provider.generate_dataloader()
-    src_prompt = generate_prompt(flag, dataset_src, source_dataloader, logger)
-    src_json_path = 'Save/prompt/{}/src.json'.format(dataset_src, database)
+    src_prompt = generate_prompt(cfg, flag, dataset_src, source_dataloader, database, logger)
+    src_json_path = save_dir + 'src.json'
     with open(src_json_path, 'w') as f:
         json.dump(src_prompt , f, indent=4)
 
+
+
+    logger.info("generate src.json in {}".format(src_json_path))
     
     flag = 'target_train'
     database.update_mode(flag)
     target_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
     target_dataloader = target_provider.generate_dataloader()
-    trg_prompt = generate_prompt(flag, dataset_src, target_dataloader, database)
-    trg_json_path = 'Save/prompt/{}/trg.json'.format(dataset_src)
+    trg_prompt = generate_prompt(cfg, flag, dataset_src, target_dataloader, database, logger)
+    trg_json_path = save_dir + 'trg.json'.format(dataset_src)
     with open(trg_json_path, 'w') as f:
         json.dump(trg_prompt , f, indent=4)
+
+    logger.info("generate trg.json in {}".format(src_json_path))
 
 
     flag = 'test'
     database.update_mode(flag)
     test_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
     test_dataloader = test_provider.generate_dataloader()
-    test_prompt = generate_prompt(flag, dataset_src, test_dataloader, database)
-    test_json_path = 'Save/prompt/{}/test.json'.format(dataset_src)
+    test_prompt = generate_prompt(cfg, flag, dataset_src, test_dataloader, database, logger)
+    test_json_path = save_dir + 'test.json'.format(dataset_src)
     with open(test_json_path, 'w') as f:
         json.dump(test_prompt , f, indent=4)
     
+    logger.info("generate test.json in {}".format(src_json_path))
 
     
         

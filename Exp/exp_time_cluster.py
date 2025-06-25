@@ -30,12 +30,13 @@ def exp_time_cluster(cfg, logger=None):
 
         model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
         if not os.path.exists(model_path):
-            logger.info('please pretrain time patch encoder first.')
+            logger.info(':( please pretrain time patch encoder first.')
             return 
         
         model = TSFormer(cfg['TSFormer']).to(device)
-        model.mode = 'test'
         model.load_state_dict(torch.load(model_path))
+        model.mode = 'test'
+
 
         provider = RoadDataProvider(cfg, flag='time_cluster', logger=logger)
         dataloader = provider.generate_dataloader()
@@ -47,13 +48,15 @@ def exp_time_cluster(cfg, logger=None):
         time_embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
         counter = 0
-        for batch in tqdm(dataloader):
+        for batch in dataloader:
 
             x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
             
             H = model(x)
 
-            B, C = H.shape # B * D
+            B, L, D = H.shape # B * L, D
+
+            H = H.reshape(B * L ,D)
 
             time_embed_pool[counter:counter+B, :] = H.detach().cpu()
 
@@ -84,7 +87,7 @@ def exp_time_cluster(cfg, logger=None):
     #db-score, smaller is better
     ch_score, db_score = metirc
 
-    logger.info(f"Time Pattern Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
+    logger.info(f"$$$ Time Pattern Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
 
     pattern_path = save_dir + 'pattern_{}.pt'.format(cfg['time_cluster_k'])
 

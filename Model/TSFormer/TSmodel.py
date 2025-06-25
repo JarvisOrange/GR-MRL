@@ -166,7 +166,7 @@ class TSFormer(nn.Module):
         # encoder
         H = self.encoder(encoder_input)         # B,  L/P, d
 
-        H = H.reshape(B, -1)
+        
         return H
     
 

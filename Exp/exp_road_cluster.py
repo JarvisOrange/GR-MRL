@@ -29,9 +29,10 @@ def exp_road_cluster(cfg, logger=None):
     dataloader_list = provider.generate_road_cluster_dataloader()
 
     model = TSFormer(cfg['TSFormer']).to(device)
-    model.mode = 'test'
-
+    
     model.load_state_dict(torch.load(model_path))
+
+    model.mode = 'test'
 
     K = cfg['road_cluster_k']
     dim_embed = cfg['TSFormer']['out_dim']
@@ -50,7 +51,9 @@ def exp_road_cluster(cfg, logger=None):
             
             H = model(x)
 
-            B,  D = H.shape
+            B, L, D = H.shape
+
+            H = H.reshape(B * L ,D)
 
             embed_pool[counter : B + counter,:] = H.detach()
 

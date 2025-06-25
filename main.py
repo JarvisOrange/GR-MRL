@@ -93,24 +93,28 @@ def main():
 
     # stage 1: pretrain time patch encoder or get pretrain time patch encoder
     if stage == 1:
-        _logger.info('<<<<<---------- {} ---------->>>>>'.format(stage_dict[stage]))
+        _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
         exp_pretrain(cfg, logger=_logger)
+        _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
 
     # stage 2: cluster time patch and node embedding
     elif stage == 2:
-        _logger.info('<<<<<---------- {} ---------->>>>>'.format(stage_dict[stage]))
+        _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
         exp_time_cluster(cfg, logger=_logger)
         exp_road_cluster(cfg, logger=_logger)
+        _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
 
     # stage 3: build time patch database
     elif stage == 3:
-        _logger.info('<<<<<---------- {} ---------->>>>>'.format(stage_dict[stage]))
+        _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
         exp_rag(cfg,logger=_logger)
+        _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
     
     # stage 4: finetune model
     elif stage == 4:
-        _logger.info('<<<<<---------- {} ---------->>>>>'.format(stage_dict[stage]))
+        _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
         exp_ft(cfg, logger=_logger)
+        _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
 
 
 if __name__ == '__main__':

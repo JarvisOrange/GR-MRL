@@ -19,6 +19,8 @@ class PromptDataset(Dataset):
         path = './Save/prompt/{}/{}.json'.format(dataset_src, flag)
 
         self.device = cfg['device']
+
+        self.cfg = cfg
         
         with open(path, 'r') as f:
              self.prompt = json.load(f)
@@ -50,7 +52,6 @@ class VectorBase():
         self.mode= mode
         
         self.vectors = vectors
-        self.vectors.requires_grad = False
 
         self.index = faiss.IndexFlatL2(vectors.shape[1])
         self.index.add(self.vectors)
@@ -67,21 +68,16 @@ class VectorBase():
 
     def load_related_json(self, dataset_src):
 
-        path = './Save/road_related/{}/result.json'.format(dataset_src)
+        path = './Save/related/{}/result.json'.format(dataset_src)
         
         with open(path, 'r') as f:
              self.related_dict = json.load(f)
 
     
-    def query(self, index, vector, k):
-        q = self.vectors[index]
-        
-        if self.mode != 'source_train':
-            distances, indices = self.index.search(vector, k)
-            return [idx for idx in indices[0]]
-        else:
-            distances, indices = self.index.search(vector, k+1)
-            return [idx for idx in indices[0] if idx != index]
+    def query(self, vector, k):
+        q = vector.cpu().numpy()
+        distances, indices = self.index.search(q, k+1)
+        return [idx for idx in indices[0]]
     
 
     def query_related(self, q, k):
@@ -89,12 +85,14 @@ class VectorBase():
 
         res = []
         for i in temp_list:
-            res += self.related_dict[i]
+            temp = self.related_dict.get(str(i), None)
+            if temp != None:
+                res += temp 
         return res
     
 
     def get_vector(self, index):
-        return self.vectors[index].float().to(cfg['device'])
+        return self.vectors[index].float().to(self.cfg['device'])
     
 
     
