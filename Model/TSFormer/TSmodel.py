@@ -70,11 +70,7 @@ class TSFormer(nn.Module):
         # patches : [B, L/P, d]
         # position : [B, 1, L/P]
         
-        
         patches = self.pe(patches, index=position.long()) # (B, L_P, d)
-    
-        
-        
         
         # mask tokens
         # both 1D vector contains the index
@@ -146,16 +142,16 @@ class TSFormer(nn.Module):
         """
 
         B, C, L = input.shape
-        position = input[:,:,self.position_feature,:].unsqueeze(2)
+        position = input[:, self.position_feature, :].unsqueeze(1)
         pos_indices = torch.arange(0, L, self.patch_size)
-        position = position[:,:,:,pos_indices]
+        position = position[:, : ,pos_indices]
 
         # position : [B,  1, L/P]
         position = position // 12
         position = position % 168 # 168 = 24 * 7
 
         # B, 1, L
-        input = input[:,:,self.seleted_feature,:].unsqueeze(2)
+        input = input[:, self.seleted_feature, :].unsqueeze(1)
 
         # get patches and exec input embedding
         patches = self.patch(input)             # B, d, L/P

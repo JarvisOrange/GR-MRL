@@ -63,7 +63,6 @@ class RoadData():
             self.interval = 12 * 24 # all his, not predict 
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_pretrain : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
         
         if flag == 'time_cluster':
             X = X
@@ -74,7 +73,6 @@ class RoadData():
             self.interval = 12
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_time_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
 
         if flag == 'rag':
             X = X
@@ -85,7 +83,6 @@ class RoadData():
             self.interval = 12
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_rag : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
             
 
         if flag == 'road_cluster':
@@ -97,8 +94,7 @@ class RoadData():
             self.interval = 12
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_road_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
-
+            
         if flag == 'source_train':
 
             self.his_num = self.cfg['his_num']
@@ -107,7 +103,6 @@ class RoadData():
             self.interval = self.cfg['his_num']
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_source_train : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
         if flag == 'target_train':
             X = X[:, :, :288 * self.target_days] # 24 * 12 = 288
@@ -118,7 +113,6 @@ class RoadData():
             self.interval = self.cfg['his_num']
             
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_target : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
         if flag == 'test':
             X = X[:, :, 288 * self.target_days:]
@@ -129,8 +123,6 @@ class RoadData():
             self.interval = 12
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
-            self._logger.info('{}_test : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
-
 
 
         assert self.x is not None, "x is None"
@@ -138,25 +130,34 @@ class RoadData():
             self._logger.warning("y is None, return x only")
             
         ################################################################################
+        # origin self.x: [S, N, l_his， 7]
         if self.flag == 'pretrain':
             # x : [S * N, l_his， 7]
 
             self.x = self.x.reshape(-1, self.his_num, 7)
 
+            self._logger.info('{}_pretrain : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
+
         
         if self.flag == 'time_cluster':
             # x : [S * N, l_his， 7]
             self.x = self.x.reshape(-1, self.his_num, 7)
+
+            self._logger.info('{}_time_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
             
         if self.flag == 'road_cluster':
-            # x : [N, S*l_his， 7]
-            x = np.transpose(self.x, (1, 0, 2))
-            self.x = x.reshape(self.node_num, -1, 7)
-            
-        
+            # x : [N, S, l_his， 7]
+            N, S, L, D = self.x.shape
+            self.x = np.transpose(self.x, (1, 0, 2, 3)) #[N, S, l_his， 7]
+    
+            self._logger.info('{}_road_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
+
         if self.flag == 'rag':
             # x : [S * N, l_his， 7]
             self.x = self.x.reshape(-1, self.his_num, 7)
+
+            self._logger.info('{}_rag : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
+            
             
 
         if self.flag == 'source_train' or self.flag == 'target_train' or self.flag == 'test':
@@ -165,6 +166,7 @@ class RoadData():
             self.x = self.x.reshape(-1, self.his_num, 7)
             self.y = self.y.reshape(-1, self.pre_num)
 
+            self._logger.info('{}_{} : x shape : {}, y shape : {}'.format(dataset_name, self.flag, self.x.shape, self.y.shape))
 
 
     def generate_data(self, X, num_timesteps_input, num_timesteps_output, interval_step):
@@ -255,13 +257,11 @@ class RoadData():
 
 
     def get_laplace_matrix(self):
-        adj = self.dataset.get_adj()
-        return get_laplac_embed(self.adj, self.cfg['laplacian_dim'])
+        return get_laplac_embed(self.adj, dim=self.cfg['laplacian_dim'])
 
 
     def get_space_syntax_matrix(self):
-        adj = self.dataset.get_adj()
-        return get_space_syntax_embed
+        return get_space_syntax_embed(self.adj)
 
     
     

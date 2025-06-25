@@ -15,7 +15,6 @@ from .road_data import RoadData
 # rag_dataset flag rag
 # finetune dataset flag finetune
 # finetune dataset(test)
-# try flag try
 
 
 class RoadDataset(Dataset):
@@ -43,7 +42,7 @@ class RoadDataset(Dataset):
             self.flag == 'rag':
 
             x= self.X[index]
-            x = torch.from_numpy(x).float()
+            x = torch.from_numpy(x).float().to(self.device)
             x.requires_grad = False
             return x
 
@@ -60,9 +59,6 @@ class RoadDataset(Dataset):
             return x, y
             
 
-        if self.flag =='try':
-            pass
-        
     def get_x_num(self):
         return self.X.shape[0]
     
@@ -77,6 +73,8 @@ class RoadDataProvider():
         
         self.cfg = cfg
         
+        self.device = cfg['device']
+        
 
         self.source_data, self.target_data = cfg['dataset_src_trg'].split('_')
         self.source_data = self.source_data.split('-')
@@ -84,7 +82,9 @@ class RoadDataProvider():
         self.source_data = [n for n in self.source_data]
         
         if flag == 'source_train':
-            self.data_list = [RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) for i in range(3)]
+            self.data_list = [
+                RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) 
+                for i in range(3)]
 
             X_num = 0
             X_num_dict = {}
@@ -122,7 +122,9 @@ class RoadDataProvider():
         
 
         if flag == 'pretrain':
-            self.data_src_list = [RoadData(cfg, self.source_data[i], flag, logger=logger) for i in range(3)]
+            self.data_src_list = [
+                RoadData(cfg, self.source_data[i], flag, logger=logger) 
+                for i in range(3)]
 
             X_num = 0
             X_num_dict = {}
@@ -140,8 +142,7 @@ class RoadDataProvider():
             cur = 0
             for dataset in self.data_src_list:
                 x = dataset.get_data()
-                print(x.shape)
-                print(X_num_dict[dataset.name])
+                
                 
                 self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
 
@@ -149,14 +150,16 @@ class RoadDataProvider():
 
         if flag == 'time_cluster':
             # time patch
-            self.data_time_cluster_list = [RoadData(cfg, self.source_data[i], flag='time_cluster', logger=logger) for i in range(3)]
+            self.data_time_cluster_list = [
+                RoadData(cfg, self.source_data[i], flag='time_cluster', logger=logger) 
+                for i in range(3)]
 
             X_num = 0
             X_num_dict = {}
         
-            his_num, pre_num, interval = self.data_src_list[0].get_data_info()
+            his_num, pre_num, interval = self.data_time_cluster_list[0].get_data_info()
             
-            for dataset in self.data_src_list:
+            for dataset in self.data_time_cluster_list:
                 temp = dataset.get_x_num()
                 X_num += temp
                 X_num_dict[dataset.name] = temp
@@ -165,7 +168,7 @@ class RoadDataProvider():
             self.Y = None
 
             cur = 0
-            for dataset in self.data_src_list:
+            for dataset in self.data_time_cluster_list:
                 x = dataset.get_data()
                 
                 self.X[cur:cur + X_num_dict[dataset.name], :] = x
@@ -199,9 +202,15 @@ class RoadDataProvider():
     
                 cur += R_num_dict[dataset.name]
 
-            cluster_label,_ = kmeans_pytorch(self.Road_E, self.cfg['road_cluster_k']) #[label_2, label_10..., label_1]
+            self.Road_E = torch.from_numpy(self.Road_E).float()
+            cluster_label, _, metrics = kmeans_pytorch(self.Road_E, self.cfg['road_cluster_k']) #[label_2, label_10..., label_1]
 
-            self.road_cluster_label = cluster_label
+            ch_score, db_score = metrics
+
+            logger.info(f"Road Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
+
+
+            self.road_cluster_label = cluster_label.numpy()
 
             cluster_label_node_dict = {}
             self.X_road_cluster_dict = {}
@@ -210,23 +219,27 @@ class RoadDataProvider():
             self.X_road_cluster_1 = self.data_road_cluster_1.get_data()
             self.X_road_cluster_2 = self.data_road_cluster_2.get_data()
             
-            for k in range(self.cfg['road_k']):
-                cluster_label_node_dict[k] = np.where(cluster_label == k)
+            for k in range(self.cfg['road_cluster_k']):
+                cluster_label_node_dict[k] = np.where(cluster_label == k)[0]
 
-            dataset_name_dict = R_num_dict.keys()
-            pre, _, _= self.data_road_cluster_0.get_data_info()
+            R_num_list = [v for k,v in R_num_dict.items()]
 
             for k in cluster_label_node_dict.keys():
-                temp_list = list(cluster_label_node_dict[k])
+                temp_list = cluster_label_node_dict[k].tolist()
                 temp_x = []
                 for i in temp_list:
-                    if i < R_num_dict[dataset_name_dict[0]]:
-                        temp_x += list(np.squeeze(self.X_road_cluster_0[i], dim=0))
-                    elif i < R_num_dict[dataset_name_dict[1]]:
-                        temp_x += list(np.squeeze(self.X_road_cluster_1[i], dim=0))
-                    elif i < R_num_dict[dataset_name_dict[2]]:
-                        temp_x += list(np.squeeze(self.X_road_cluster_2[i], dim=0))
-                temp_x = np.array(temp_x)
+                    if i < R_num_list[0]:
+                        index = i
+                        temp_x += [self.X_road_cluster_0[index]]
+
+                    elif i < R_num_list[0] + R_num_list[1]:
+                        index = i - R_num_list[0]
+                        temp_x += [self.X_road_cluster_1[index]]
+
+                    elif i < R_num_list[0] + R_num_list[1] + R_num_list[2]:
+                        index = i - R_num_list[0] - R_num_list[1]
+                        temp_x += [self.X_road_cluster_2[index]]
+                temp_x = np.vstack(temp_x)
                 self.X_road_cluster_dict[k] = temp_x #[, S*l_his, 7]
             
 
@@ -257,21 +270,12 @@ class RoadDataProvider():
             with open(json_path, 'w') as f:
                 json.dump(dataset_info_dict, f, indent=4)
         
-
-        if flag =='try':
-            pass
-    
-
     def generate_dataloader(self):
         drop_last = False
         shuffle = False
-        
-        if self.flag == 'pretrain': 
-            bs = self.cfg['flag'][self.flag]['batch_size']
-        else: # source_train target_train test rag time_cluster road_cluster don't need shuffle
-            bs = 1
 
-        
+        bs = self.cfg['flag'][self.flag]['batch_size']
+
         R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
 
         dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = shuffle, drop_last=drop_last)
@@ -285,6 +289,7 @@ class RoadDataProvider():
 
         train_ratio, val_ratio, test_ratio = self.cfg['flag']['pretrain']['train_val_test']
 
+        #tobefix
         length = self.X.shape[0]
         X_train = self.X[ : int(train_ratio*length)]
         X_val = self.X[int( train_ratio*length) : int((train_ratio+val_ratio)*length)]
@@ -315,13 +320,14 @@ class RoadDataProvider():
     def generate_road_cluster_dataloader(self):
         
         assert self.flag == 'road_cluster', 'this provider is not for road clustering'
-        bs = self.cfg['pretrain']['batch_size']
+        bs = self.cfg['flag']['road_cluster']['batch_size']
         drop_last = False
 
         dataloader_list = []
 
         for k in self.X_road_cluster_dict.keys():
-            R_dataset = RoadDataset(self.flag, self.X_road_cluster_dict[k], device = self.cfg['device'])
+            Y = None
+            R_dataset = RoadDataset(self.flag, self.X_road_cluster_dict[k], Y, device = self.cfg['device'])
             dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
             dataloader_list.append(dataloader)
 

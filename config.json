@@ -8,13 +8,16 @@
 
     "seed": 42,
 
+    "stage": 2,
+
 
 
     "flag":  {
         "pretrain": {
-                "batch_size": 128, 
+                "batch_size": 1024, 
                 "epoch": 1000,
                 "lr" : 5e-5,
+                "weight_decay": 1e-2,
                 "train_val_test":[0.7, 0.1, 0.2]
         },
         "source_train":{
@@ -29,7 +32,15 @@
             "target_train_lr": 0.0001
         },
 
-        "target_test":{
+        "time_cluster":{
+            "batch_size": 2048
+        },
+
+        "road_cluster":{
+            "batch_size": 2048
+        },
+
+        "rag":{
             "batch_size": 16
         }
     },
@@ -88,7 +99,7 @@
 
     "time_cluster_k": 32,
 
-    "road_cluster_k": 16,
+    "road_cluster_k": 16, 
 
     
 

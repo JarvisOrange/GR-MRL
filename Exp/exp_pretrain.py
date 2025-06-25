@@ -39,7 +39,9 @@ def exp_pretrain(cfg, logger=None):
 
     model = TSFormer(cfg['TSFormer']).to(device)
     model.mode = 'pretrain'
-    opt = optim.Adam(model.parameters(),lr = cfg['flag']['pretrain']['lr'])
+    opt = optim.AdamW(model.parameters(),
+                      lr = cfg['flag']['pretrain']['lr'], 
+                      weight_decay=cfg['flag']['pretrain']['weight_decay'])
     loss_fn = nn.MSELoss(reduction = 'mean')
 
     logger.info('pretrain model has {} parameters'.format(count_parameters(model)))
@@ -91,8 +93,8 @@ def exp_pretrain(cfg, logger=None):
 
             if debug: break
         
-        logger.info('Epochs {}/{} Start'.format(i, epochs))
-        logger.info('* Training MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}, normed MSE : {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape),np.mean(total_loss)))
+        logger.info('Epochs {}/{}'.format(i, epochs))
+        logger.info('* Train MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}, normed MSE : {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape),np.mean(total_loss)))
         
         ############################################ 
         # validation
@@ -133,7 +135,7 @@ def exp_pretrain(cfg, logger=None):
 
             if debug: break
 
-        logger.info('** Validation MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape)))
+        logger.info('** Val MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape)))
         
         mae_loss = np.mean(total_mae)
         if(mae_loss < best_loss):
@@ -184,7 +186,7 @@ def exp_pretrain(cfg, logger=None):
         logger.info('*** Test MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape)))
         
 
-        logger.info('Epochs {}/{} Ends :)'.format(i, epochs))
+        logger.info('Epochs {}/{} End   :)'.format(i, epochs))
         logger.info('This epoch costs {:.5}s'.format(time.time()-time_1))
         
         if debug: exit(0)

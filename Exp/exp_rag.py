@@ -93,18 +93,18 @@ def generate_related(dataset_src, time_embed_pool, logger):
 def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
         
     model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
-    if not os.exist(model_path):
+    if not os.path.exists(model_path):
         logger.info('please pretrain time patch encoder first.')
         return 
     
-    model = TSFormer(cfg['TSFromer']).to(cfg['device'])
+    model = TSFormer(cfg['TSFormer']).to(cfg['device'])
     model.mode = 'test'
     model.load_state_dict(torch.load(model_path))
 
 
     save_flag = False
     
-    if flag == 'target' and not os.exist(embed_path):
+    if flag == 'target' and not os.path.exists(embed_path):
         embed_path = './Save/time_embed/{}/embed_trg.pt'.format(dataset_src)
         
         num_embed = dataloader.dataset.get_x_num()
@@ -115,7 +115,7 @@ def generate_prompt(flag, dataset_src, dataloader, vectorbase, logger, dataset_t
         save_flag = True
 
             
-    elif flag == 'test' and not os.exist(embed_path):
+    elif flag == 'test' and not os.path.exists(embed_path):
         embed_path = './Save/time_embed/{}/embed_test.pt'.format(dataset_src)
         
         num_embed = dataloader.dataset.get_x_num()
@@ -193,7 +193,7 @@ def exp_rag(cfg, logger=None):
 
     embed_path = './Save/time_embed/{}/embed_src.pt'.format(dataset_src)
     
-    if os.exist(embed_path):
+    if os.path.exists(embed_path):
         time_embed_pool = torch.load(embed_path).to(device)
         time_embed_pool.requires_grad = False
     else:
@@ -204,7 +204,7 @@ def exp_rag(cfg, logger=None):
 
     related_path = './Save/road_related/{}/result.json'.format(dataset_src)
 
-    if not os.exist(related_path):
+    if not os.path.exists(related_path):
         logger.info('generate related road first')
         generate_related(dataset_src, time_embed_pool, logger)
 

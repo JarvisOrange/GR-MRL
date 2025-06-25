@@ -12,6 +12,7 @@ import datetime
 from torch.utils.data import Dataset
 import random
 import torch.nn as nn
+from sklearn.metrics import calinski_harabasz_score, silhouette_score, davies_bouldin_score
 
 
 def get_local_time():
@@ -40,8 +41,10 @@ def get_logger(config, name=None):
     log_dir = './Log'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    log_filename = '{}-{}-{}.log'.format(config['exp_tag'],
-                                             config['dataset_src_trg'], get_local_time())
+    log_filename = 'S{}-{}-{}-{}.log'.format(str(config['stage']),
+                                             config['exp_tag'],
+                                             config['dataset_src_trg'], 
+                                             get_local_time())
     logfilepath = os.path.join(log_dir, log_filename)
 
     logger = logging.getLogger(name)
@@ -109,10 +112,10 @@ def get_optimizer(model, args):
     
 
 
-def kmeans_pytorch(X, n_clusters, max_iter=100, tol=1e-4, device=None):
-    """
-    PyTorch 实现的 K-means 聚类（GPU 版本）
-    """
+def kmeans_pytorch(X, n_clusters, max_iter=1000, tol=1e-4, device=None):
+    
+    #PyTorch  K-means  GPU
+    
     X = X.to(device)
 
     n_samples, n_features = X.shape
@@ -136,7 +139,16 @@ def kmeans_pytorch(X, n_clusters, max_iter=100, tol=1e-4, device=None):
             
         centers = new_centers
 
-    return labels.cpu(), centers.cpu()
+    X = X.cpu()
+    labels = labels.cpu()
+    centers = centers.cpu()
+
+    # silhouette_avg = silhouette_score(X, labels)
+    # print(silhouette_avg)
+    ch_score = calinski_harabasz_score(X, labels)
+    db_score = davies_bouldin_score(X, labels)
+
+    return labels, centers, [ch_score, db_score]
 
 
 def calc_metric(pred, y):

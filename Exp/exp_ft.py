@@ -16,7 +16,7 @@ from utils import My_Loss
 from tqdm import tqdm
 import time
 
-def exp_pred(cfg, logger=None):
+def exp_ft(cfg, logger=None):
     
     debug  = cfg['debug']
     

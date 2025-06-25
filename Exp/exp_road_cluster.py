@@ -21,14 +21,14 @@ def exp_road_cluster(cfg, logger=None):
     dataset_src = ''.join(temp.split('-'))
     model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
 
-    if not os.exist(model_path):
+    if not os.path.exists(model_path):
         logger.info('please pretrain time patch encoder first.')
         return 
     
     provider = RoadDataProvider(cfg, flag='road_cluster', logger=logger)
     dataloader_list = provider.generate_road_cluster_dataloader()
 
-    model = TSFormer(cfg['TSFromer']).to(device)
+    model = TSFormer(cfg['TSFormer']).to(device)
     model.mode = 'test'
 
     model.load_state_dict(torch.load(model_path))
@@ -41,30 +41,31 @@ def exp_road_cluster(cfg, logger=None):
     for k, dataloader in enumerate(dataloader_list):
         num_embed = dataloader.dataset.get_x_num()
 
-        embed_pool = torch.zeros([num_embed, dim_embed]).float().cpu()
+        embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
-        temp = 0
-        for batch in tqdm(dataloader):
+        counter = 0
+        for batch in dataloader:
 
             x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
             
             H = model(x)
 
-            B,  C, L = x.shape
+            B,  D = H.shape
 
-            H = H.reshape(B * L, -1) # N_time_patch * dim
+            embed_pool[counter : B + counter,:] = H.detach()
 
-            logger.info('corresbonding H shape : {}'.format(H.shape))
-
-            embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu()
-
-            temp = x.shape[0] + temp
+            counter = B + counter
 
         embed = embed_pool.mean(dim=0)
-        road_pattern[k,:] = embed 
-    
+        road_pattern[k,:] = embed.cpu() 
 
-    torch.save(road_pattern,'./Save/road_pattern/{}/embed_{}.pt'.format(dataset_src, str(K)))
+    save_dir = './Save/road_pattern/{}/'.format(dataset_src)
+    ensure_dir(save_dir)
+    
+    save_path = save_dir + 'embed_src_{}.pt'.format(str(K))
+
+    torch.save(road_pattern, save_path)
+    logger.info('Road pattern Saved at {}'.format(save_path))
 
     
     

@@ -15,32 +15,25 @@ import copy
 
 
 def exp_time_cluster(cfg, logger=None):
-    debug  = cfg['debug']
+    debug = cfg['debug']
     
     device = cfg['device']
 
     temp, _ = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
 
-    embed_path = './Save/time_embed/{}/embed.pt'.format(dataset_src)
+    save_dir = './Save/time_embed/{}/'.format(dataset_src)
 
-    if os.exist(embed_path):
-        time_embed_pool = torch.load(embed_path).to(device)
-        time_embed_pool.requires_grad = False
+    embed_path = save_dir + 'embed_src.pt'.format(dataset_src)
 
-        center, center_label = kmeans_pytorch(
-        X = time_embed_pool , num_clusters=cfg['time_cluster_k'])
-    
-        torch.save(center,'./Save/time_pattern/{}/{}_c.pt'.format(dataset_src, cfg['time_cluster_k']))
-        torch.save(center_label,'./Save/time_pattern/{}/{}_cl.pt'.format(dataset_src, cfg['time_cluster_k']))
+    if not os.path.exists(embed_path):
 
-    else:
         model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
-        if not os.exist(model_path):
+        if not os.path.exists(model_path):
             logger.info('please pretrain time patch encoder first.')
             return 
         
-        model = TSFormer(cfg['TSFromer']).to(device)
+        model = TSFormer(cfg['TSFormer']).to(device)
         model.mode = 'test'
         model.load_state_dict(torch.load(model_path))
 
@@ -51,33 +44,56 @@ def exp_time_cluster(cfg, logger=None):
         num_embed = dataloader.dataset.get_x_num()
         dim_embed = cfg['TSFormer']['out_dim']
 
-        time_embed_pool  = torch.tensor([num_embed, dim_embed]).float()
+        time_embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
-        temp = 0
+        counter = 0
         for batch in tqdm(dataloader):
 
             x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
             
             H = model(x)
 
-            B,  C, L = x.shape
+            B, C = H.shape # B * D
 
-            H = H.reshape(B *  L, -1) # N_time_patch * dim
+            time_embed_pool[counter:counter+B, :] = H.detach().cpu()
 
-            logger.info('corresbonding H shape : {}'.format(H.shape))
-
-            time_embed_pool[temp : x.shape[0] + temp,:] = H.detach().cpu()
-
-            temp = x.shape[0] + temp
+            counter += B 
         
         logger.info("{} emb_pool shape : {}".format(dataset_src, time_embed_pool.shape))
 
         time_embed_pool.requires_grad = False
 
-        torch.save(time_embed_pool,'./Save/time_embed/{}/embed_src.pt'.format(dataset_src))
 
-        center, center_label = kmeans_pytorch(
-        X=time_embed_pool , num_clusters=cfg['time_cluster_k'], device=device)
+        
+        ensure_dir(save_dir)
+
+        torch.save(time_embed_pool, save_dir + 'embed_src.pt')
+
+        logger.info('Time Embed Saved at {}'.format(save_dir + 'embed_src.pt'))        
+
+
+    else:
+        time_embed_pool = torch.load(embed_path).to(device)
+        time_embed_pool.requires_grad = False
+
     
-        torch.save(center, './Save/time_pattern/{}/embed_{}.pt'.format(dataset_src, cfg['time_cluster_k']))
-        torch.save(center_label, './Save/time_pattern/{}/{}_cl.pt'.format(dataset_src, cfg['time_cluster_k']))
+    center_label, center, metirc = kmeans_pytorch(time_embed_pool , cfg['time_cluster_k'], device=device)
+    
+    #s-score [-1,1], 1 is best
+    #ch-score, bigger is better
+    #db-score, smaller is better
+    ch_score, db_score = metirc
+
+    logger.info(f"Time Pattern Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
+
+    pattern_path = save_dir + 'pattern_{}.pt'.format(cfg['time_cluster_k'])
+
+    cluster_label_path = save_dir + 'pattern_label_{}.pt'.format(cfg['time_cluster_k'])
+
+    torch.save(center, pattern_path)
+    torch.save(center_label,  cluster_label_path)
+
+    logger.info('Time pattern Saved at {}'.format(pattern_path))
+    logger.info('Time pattern cluster label Saved at {}'.format(cluster_label_path))
+
+    
