@@ -53,17 +53,19 @@ class VectorBase():
         self.mode= mode
         
         self.vectors = vectors
-
-        device_id = int(cfg['device'].split(':')[1])
         
+        device_id = int(cfg['device'].split(':')[1])
 
         index_cpu = faiss.IndexFlatL2(self.vectors.shape[1])
-        index_gpu = faiss.index_cpu_to_gpu(faiss.StandardGpuResources(), device_id, index_cpu)
-        
-        index_gpu.add(self.vectors.cpu())
-        self.v_index = index_gpu
 
-        self.index.add(self.vectors)
+        index_gpu = faiss.index_cpu_to_gpu(
+            faiss.StandardGpuResources(),  
+            device_id,
+            index_cpu
+            )
+        index_gpu.add(self.vectors.cpu())
+
+        self.v_index = index_gpu
 
         self.load_related_json(dataset_src)
 
@@ -73,7 +75,6 @@ class VectorBase():
     def update_mode(self, mode):
         self.mode = mode
         
-
 
     def load_related_json(self, dataset_src):
 
@@ -85,19 +86,20 @@ class VectorBase():
 
     
     def query(self, vector, k):
-        q = vector.cpu().numpy()
-        distances, indices = self.index.search(q, k+1)
-        return [idx for idx in indices[0]]
+        q = vector.cpu()
+        distances, indices = self.v_index.search(q, k)
+        return [idx[0] for idx in indices]
     
 
     def query_related(self, q, k):
+        
         temp_list =  self.query(q, k)
-
-        res = []
-        for i in temp_list:
-            temp = self.related_dict.get(str(i), None)
+        
+        res = {}
+        for i in range(q.shape[0]):
+            temp = self.related_dict.get(str(temp_list[i]), None)
             if temp != None:
-                res += temp 
+                res[i] = temp
         return res
     
 

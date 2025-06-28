@@ -105,7 +105,7 @@ class RoadData():
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
 
         if flag == 'target_train':
-            X = X[:, :, :288 * self.target_days] # 24 * 12 = 288
+            X = X[:, :, :288 * self.target_day] # 24 * 12 = 288
 
             self.his_num = self.cfg['his_num']
             self.pre_num = self.cfg['pre_num']
@@ -115,12 +115,13 @@ class RoadData():
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
 
         if flag == 'test':
-            X = X[:, :, 288 * self.target_days:]
+            print(X.shape)
+            X = X[:, :, 288 * self.target_day:]
 
             self.his_num = self.cfg['his_num']
             self.pre_num = self.cfg['pre_num']
 
-            self.interval = 12
+            self.interval = self.cfg['his_num']
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
 

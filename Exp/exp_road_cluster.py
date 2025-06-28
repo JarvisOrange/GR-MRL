@@ -65,7 +65,7 @@ def exp_road_cluster(cfg, logger=None):
     save_dir = './Save/road_pattern/{}/'.format(dataset_src)
     ensure_dir(save_dir)
     
-    save_path = save_dir + 'embed_src_{}.pt'.format(str(K))
+    save_path = save_dir + 'pattern_{}.pt'.format(str(K))
 
     torch.save(road_pattern, save_path)
     logger.info('Road pattern Saved at {}'.format(save_path))

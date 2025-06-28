@@ -81,45 +81,6 @@ class RoadDataProvider():
 
         self.source_data = [n for n in self.source_data]
         
-        if flag == 'source_train':
-            self.data_list = [
-                RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) 
-                for i in range(3)]
-
-            X_num = 0
-            X_num_dict = {}
-        
-            his_num, pre_num, interval = self.data_list[0].get_data_info()
-            
-            for dataset in self.data_list:
-                temp = dataset.get_x_num()
-                X_num += temp
-                X_num_dict[dataset.name] = temp
-                
-            self.X = np.zeros([X_num, his_num, 7], dtype=float)
-            self.Y = np.zeros([X_num, pre_num], dtype=float)
-
-            cur = 0
-            for dataset in self.data_list:
-                x, y = dataset.get_data()
-                
-                self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
-                self.Y[cur:cur + X_num_dict[dataset.name], :] = y
-
-                cur += dataset.get_x_num()
-
-            #target test apply different epoch
-
-        if flag == 'target_train':
-            self.data_trg = RoadData(cfg, self.target_data, flag='target_train', logger=logger)
-
-            self.X, self.Y = self.data_trg.get_data()
-
-        if flag == 'test':
-            self.data_trg = RoadData(cfg, self.target_data, flag='test', logger=logger)
-
-            self.X, self.Y = self.data_trg.get_data()
-        
 
         if flag == 'pretrain':
             self.data_src_list = [
@@ -281,19 +242,60 @@ class RoadDataProvider():
                     
                 with open(json_path, 'w') as f:
                     json.dump(dataset_info_dict, f, indent=4)
+                    
+
+        if flag == 'source_train':
+            self.data_list = [
+                RoadData(cfg, self.source_data[i], flag=self.flag, logger=logger) 
+                for i in range(3)]
+
+            X_num = 0
+            X_num_dict = {}
+        
+            his_num, pre_num, interval = self.data_list[0].get_data_info()
+            
+            for dataset in self.data_list:
+                temp = dataset.get_x_num()
+                X_num += temp
+                X_num_dict[dataset.name] = temp
+                
+            self.X = np.zeros([X_num, his_num, 7], dtype=float)
+            self.Y = np.zeros([X_num, pre_num], dtype=float)
+
+            cur = 0
+            for dataset in self.data_list:
+                x, y = dataset.get_data()
+                
+                self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
+                self.Y[cur:cur + X_num_dict[dataset.name], :] = y
+
+                cur += dataset.get_x_num()
+
+            #target test apply different epoch
+
+        if flag == 'target_train':
+            self.data_trg = RoadData(cfg, self.target_data, flag='target_train', logger=logger)
+
+            self.X, self.Y = self.data_trg.get_data()
+
+        if flag == 'test':
+            self.data_trg = RoadData(cfg, self.target_data, flag='test', logger=logger)
+
+            self.X, self.Y = self.data_trg.get_data()
             
 
-    def generate_dataloader(self):
+    def generate_dataloader(self, rag_flag=None):
         #except pretrain and road cluster
         drop_last = False
         shuffle = False
 
-        bs = self.cfg['flag'][self.flag]['batch_size']
+        if rag_flag == 'rag':
+            bs = self.cfg['flag']['rag']['batch_size']
+        else:
+            bs = self.cfg['flag'][self.flag]['batch_size']
 
         R_dataset = RoadDataset(self.flag, self.X, self.Y, device = self.cfg['device'])
-
         dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = shuffle, drop_last=drop_last)
-
         return dataloader
     
     
@@ -330,6 +332,7 @@ class RoadDataProvider():
         test_dataloader = DataLoader(R_test_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
 
         return train_dataloader, val_dataloader, test_dataloader
+    
 
     def generate_road_cluster_dataloader(self):
         

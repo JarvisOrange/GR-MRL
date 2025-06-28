@@ -89,6 +89,10 @@ def exp_time_cluster(cfg, logger=None):
 
     logger.info(f"$$$ Time Pattern Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
 
+    save_dir = './Save/time_pattern/{}/'.format(dataset_src)
+
+    ensure_dir(save_dir)
+
     pattern_path = save_dir + 'pattern_{}.pt'.format(cfg['time_cluster_k'])
 
     cluster_label_path = save_dir + 'pattern_label_{}.pt'.format(cfg['time_cluster_k'])

@@ -1,14 +1,14 @@
 {
  
-    "debug": 0,
+    "debug": 1,
 
     "exp_tag": "raw",
 
-    "device": "cuda:0",
+    "device": "cuda:1",
 
     "seed": 42,
 
-    "stage": 3,
+    "stage": 4,
 
 
 
@@ -32,6 +32,12 @@
             "target_train_lr": 0.0001
         },
 
+         "test":{
+            "batch_size": 16,
+            "target_train_epochs": 1000,
+            "target_train_lr": 0.0001
+        },
+
         "time_cluster":{
             "batch_size": 2048
         },
@@ -41,7 +47,7 @@
         },
 
         "rag":{
-            "batch_size": 16
+            "batch_size": 4096
         }
     },
 
@@ -130,7 +136,7 @@
         "expert_dim": 64
     },
 
-    "LLM_path": "./LLM/glm-4-9b",
+    "LLM_path": "./LLM/chatglm2-6b-int4",
 
     "lora_method": "stmoelora",
 
@@ -138,8 +144,8 @@
     "lora_dropout": 0.1,
     "lora_alpha": 32,
 
-    "target_modules": "q_proj,v_proj",
-    "modules_to_save": "tobefix",
+    "target_modules": ["query_key_value"],
+    "modules_to_save": ["embed_tokens", "lm_head", "mapping_layer", "output_layer"],
 
     "top_k": 2,
 

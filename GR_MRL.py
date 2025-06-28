@@ -10,6 +10,9 @@ from Model.MLoRA.peft import PeftModel, TaskType, get_peft_model
 from Model.MLoRA.peft import MMOELoraSTConfig
 
 
+
+
+
 class GR_MRL(nn.Module):
     def __init__(self, cfg, mode='source_train'):
         super(GR_MRL, self).__init__()
@@ -23,14 +26,14 @@ class GR_MRL(nn.Module):
         self.dataset_src = ''.join(temp.split('-'))
 
 
-        self.time_pattern  = torch.load('Save/time_pattern/{}/embed_{}.pt'.format(self.dataset_src, cfg['time_cluster_k']))
+        self.time_pattern  = torch.load('Save/time_pattern/{}/pattern_{}.pt'.format(self.dataset_src, cfg['time_cluster_k']))
         self.time_pattern.requires_grad = False
 
-        self.road_pattern  = torch.load('Save/road_pattern/{}/embed_{}.pt'.format(self.dataset_src, cfg['time_cluster_k']))
+        self.road_pattern  = torch.load('Save/road_pattern/{}/pattern_{}.pt'.format(self.dataset_src, cfg['road_cluster_k']))
         self.road_pattern.requires_grad = False
 
         # model part
-        self.set_LLM()
+        self.set_LLM(cfg)
 
         self.input_embed_dim = self.time_pattern.shape[1]
         self.mapping_layer = nn.Linear(self.time_pattern.shape[1], self.word_embed_dim)
@@ -39,10 +42,10 @@ class GR_MRL(nn.Module):
 
         self.dropout = nn.Dropout(cfg['dropout'])
 
-        self.update_embedding_layer()
+        self.update_embedding_layer(cfg)
 
 
-    def update_embedding_layer(self):
+    def update_embedding_layer(self, cfg):
         if self.mode == 'source_train':
             embed_path = './Save/time_embed/{}/embed_src.pt'.format(self.dataset_src)
         elif self.mode == 'target_train':
@@ -71,13 +74,13 @@ class GR_MRL(nn.Module):
         self.update_embedding_layer()
 
 
-    def set_LLM(self):
+    def set_LLM(self, cfg):
         llm_config = AutoConfig.from_pretrained(
-            self.LLM_path + '/config.json',
+            self.LLM_path,
             trust_remote_code = True,
             )
         
-        self.word_embed_dim = llm_config['hidden_size']
+        self.word_embed_dim = llm_config.hidden_size
         
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.LLM_path,
@@ -100,8 +103,7 @@ class GR_MRL(nn.Module):
         lora_dropout = cfg['lora_dropout']
         lora_alpha = cfg['lora_alpha']
 
-        if cfg['lora_method'] == 'moelora':
-            TargetLoraConfig = MMOELoraSTConfig
+        if cfg['lora_method'] == 'stmoelora':
 
             gate_embed_path = 'Save/time_pattern/{}/embed.pt'.format(self.dataset_src) + ';' \
                 'Save/road_pattern/{}/embed.pt'.format(self.dataset_src)
@@ -115,11 +117,11 @@ class GR_MRL(nn.Module):
                   }
             
             task_type = TaskType.CAUSAL_LMS
-            target_modules = cfg['target_modules'].split(',')
-            modules_to_save = cfg['modules_to_save'].split(',')
+            target_modules = cfg['target_modules']
+            modules_to_save = cfg['modules_to_save']
 
 
-        peft_config = TargetLoraConfig(
+        peft_config = MMOELoraSTConfig(
             task_type=task_type,
             target_modules=target_modules,
             inference_mode=False,
@@ -128,7 +130,7 @@ class GR_MRL(nn.Module):
             modules_to_save=modules_to_save,
             **kwargs
         )
-        model = get_peft_model(model, peft_config)
+        self.model = get_peft_model(self.llm, peft_config)
 
 
 
@@ -167,19 +169,19 @@ class GR_MRL(nn.Module):
 
         #dataset description and task description    
         prompt_desc = self.tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
-        prompt_desc_embed = self.llm.get_input_embeddings()(prompt_desc.to(self.device))   # (batch, prompt_token, dim)
+        prompt_desc_embed = self.model.get_input_embeddings()(prompt_desc.to(self.device))   # (batch, prompt_token, dim)
 
         prompt_his = ['History information:'] * len(index)
         prompt_his = self.tokenizer(prompts, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
-        prompt_his_embed =  self.llm.get_input_embeddings()(prompt_his.to(self.device)) # (batch, prompt_token, dim)
+        prompt_his_embed =  self.mode.get_input_embeddings()(prompt_his.to(self.device)) # (batch, prompt_token, dim)
 
         prompt_ref = ['Reference information:'] * len(index)
         prompt_ref = self.tokenizer(prompt_ref, return_tensors="pt", padding=True, truncation=True, max_length=2048).input_ids
-        prompt_ref_embed =  self.llm.get_input_embeddings()(prompt_ref.to(self.device)) # (batch, prompt_token, dim)
+        prompt_ref_embed =  self.mode.get_input_embeddings()(prompt_ref.to(self.device)) # (batch, prompt_token, dim)
 
         llm_input = torch.hstack([prompt_desc_embed, prompt_his_embed, his_embed, prompt_ref_embed, ref_embed])
 
-        llm_output = self.llm(inputs_embeds=llm_input).last_hidden_state
+        llm_output = self.model(inputs_embeds=llm_input).last_hidden_state
 
         output = self.output_layer(llm_output)
 

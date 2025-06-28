@@ -36,9 +36,11 @@ class MMOELoraSTConfig(LoraConfig):
     """
     This is the configuration class to store the configuration of a [`~peft.MMOELora`]
     """
-    task_num: int = field(default=2, metadata={"help": "The number of tasks."})
-    task_embedding_dim: int = field(default=64)
-    expert_num: int = field(default=4)
+    expert_t_num: int = field(default=32, metadata={"help": "The number of time pattern."})
+    expert_r_num: int = field(default=16, metadata={"help": "The number of road pattern."})
+    gate_embed_dim: int = field(default=128, metadata={"help": "The dimension of the gate embedding."})
+    gate_embed_path: str = field(default="", metadata={"help": "The path to the gate embedding file."})
+    top_k: int = field(default=2, metadata={"help": "The number of top-k experts to use."})
 
     def __post_init__(self):
         self.peft_type = PeftType.MMOELORAST
@@ -95,6 +97,7 @@ class MMOELoraSTModel(LoraModel):
             "top_k": lora_config.top_k
         }
         key_list = [key for key, _ in self.model.named_modules()]   # all module in raw model
+        print(key_list, lora_config.target_modules)
         for key in key_list:
             # find the corresponding modules. target module has been split into list.
             if isinstance(lora_config.target_modules, str):

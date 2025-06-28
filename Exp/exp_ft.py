@@ -64,12 +64,12 @@ def exp_ft(cfg, logger=None):
             opt.step()
 
             train_loss.append(loss.item())
+
+            logger.info("{} Target Train Epoch: {} | Loss: {1:.3f}".format(dataset_trg, epoch + 1, train_loss))
         
         train_loss = np.average(train_loss)
 
-        logger.info("{} Source Train Epoch: {0} | Loss: {1:.3f}".format(dataset_src, epoch + 1, train_loss))
-
-
+        logger.info("{} Source Train Epoch: {} | Loss: {1:.3f}".format(dataset_src, epoch + 1, train_loss))
 
 
     # target finetune
@@ -99,7 +99,7 @@ def exp_ft(cfg, logger=None):
 
         train_loss = np.average(train_loss)
 
-        logger.info("{} Target Train Epoch: {0} | Loss: {1:.3f}".format(dataset_trg, epoch + 1, train_loss))
+        logger.info("{} Target Train Epoch: {} | Loss: {1:.3f}".format(dataset_trg, epoch + 1, train_loss))
             
     # inference  
     flag = 'test'   
