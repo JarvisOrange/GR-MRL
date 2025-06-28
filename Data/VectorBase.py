@@ -11,6 +11,7 @@ import numpy as np
 import torch.nn.functional as F
 import faiss
 from torch.utils.data import Dataset, DataLoader
+import orjson
 
 
 
@@ -48,12 +49,20 @@ class PromptDataset(Dataset):
 
 
 class VectorBase():
-    def __init__(self, dataset_src, vectors, mode='source_train'):
+    def __init__(self, cfg, dataset_src, vectors, mode='source_train'):
         self.mode= mode
         
         self.vectors = vectors
 
-        self.index = faiss.IndexFlatL2(vectors.shape[1])
+        device_id = int(cfg['device'].split(':')[1])
+        
+
+        index_cpu = faiss.IndexFlatL2(self.vectors.shape[1])
+        index_gpu = faiss.index_cpu_to_gpu(faiss.StandardGpuResources(), device_id, index_cpu)
+        
+        index_gpu.add(self.vectors.cpu())
+        self.v_index = index_gpu
+
         self.index.add(self.vectors)
 
         self.load_related_json(dataset_src)
@@ -70,8 +79,9 @@ class VectorBase():
 
         path = './Save/related/{}/result.json'.format(dataset_src)
         
-        with open(path, 'r') as f:
-             self.related_dict = json.load(f)
+        self.related_dict = {}
+        with open(path, "r") as f:
+            self.related_dict = orjson.loads(f.read())
 
     
     def query(self, vector, k):

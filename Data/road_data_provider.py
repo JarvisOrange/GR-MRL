@@ -284,6 +284,7 @@ class RoadDataProvider():
             
 
     def generate_dataloader(self):
+        #except pretrain and road cluster
         drop_last = False
         shuffle = False
 

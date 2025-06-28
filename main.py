@@ -50,7 +50,7 @@ def set_cfg():
     # cfg["dataset_src_trg"] = args.dataset_src_trg
     # cfg["device"] = args.device
 
-    exp_dir = f"Checkpoints/exp__{cfg['exp_tag']}/{cfg['dataset_src_trg']}"
+    exp_dir = f"Checkpoints/exp_{cfg['exp_tag']}/{cfg['dataset_src_trg']}"
 
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
