@@ -92,12 +92,6 @@ class GR_MRL(nn.Module):
             trust_remote_code=True
         ).cuda(self.device)
 
-        if self.tokenizer.eos_token:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-        else:
-            pad_token = '[PAD]'
-            self.tokenizer.add_special_tokens({'pad_token': pad_token})
-            self.tokenizer.pad_token = pad_token
 
         lora_rank = cfg['lora_rank']
         lora_dropout = cfg['lora_dropout']

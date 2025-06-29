@@ -97,7 +97,6 @@ class MMOELoraSTModel(LoraModel):
             "top_k": lora_config.top_k
         }
         key_list = [key for key, _ in self.model.named_modules()]   # all module in raw model
-        print(key_list, lora_config.target_modules)
         for key in key_list:
             # find the corresponding modules. target module has been split into list.
             if isinstance(lora_config.target_modules, str):

@@ -4,7 +4,7 @@
 
     "exp_tag": "raw",
 
-    "device": "cuda:1",
+    "device": "cuda:0",
 
     "seed": 42,
 
@@ -136,7 +136,7 @@
         "expert_dim": 64
     },
 
-    "LLM_path": "./LLM/chatglm2-6b-int4",
+    "LLM_path": "./LLM/chatglm2-6b-int",
 
     "lora_method": "stmoelora",
 
