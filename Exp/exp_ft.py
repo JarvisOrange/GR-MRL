@@ -77,7 +77,7 @@ def exp_ft(cfg, logger=None):
     for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
         train_loss = []
 
-        for batch in source_dataloader:
+        for i, batch in enumerate(source_dataloader):
             output = model(batch)
             output = output.float()
             label = [item['label'] for item in batch]
@@ -89,7 +89,7 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            logger.info("{} Train Epoch: {} | Loss: {:.3f}".format(dataset_trg, epoch + 1, loss.item()))
+            logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(source_dataloader), loss.item()))
         
         train_loss = np.average(train_loss)
 
@@ -115,7 +115,7 @@ def exp_ft(cfg, logger=None):
     for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
         train_loss = []
         # epoch_time = time.time()
-        for batch in target_dataloader:
+        for i, batch in enumerate(target_dataloader):
             
             output = model(batch)
             output = output.float()
@@ -127,6 +127,8 @@ def exp_ft(cfg, logger=None):
             opt.step()
 
             train_loss.append(loss.item())
+
+            logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(target_dataloader), loss.item()))
 
         train_loss = np.average(train_loss)
 
@@ -149,7 +151,7 @@ def exp_ft(cfg, logger=None):
     truth = np.zeros(len(test_dataset), cfg['pre_num'])
 
     cur = 0
-    for batch in test_dataloader:
+    for i, batch in enumerate(test_dataloader):
         output = model(batch)
         output = output.float()
         label = [item['label'] for item in batch]
