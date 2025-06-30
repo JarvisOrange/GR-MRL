@@ -1194,15 +1194,9 @@ class PeftModelForCausalLMShared(PeftModelForCausalLM):
         self.expert_r_num = peft_config.expert_r_num
         self.gate_embed_dim = peft_config.gate_embed_dim
         self.gate_embed_path = peft_config.gate_embed_path
-        self.top_k = peft_config.top_k
+        self.expert_top_k = peft_config.expert_top_k
         
         self.active_adapter = adapter_name
-
-        self.lora_task_embedding = nn.ModuleDict({})
-        self.lora_gate = nn.ModuleDict({})
-        self.lora_task_embedding.update(nn.ModuleDict({adapter_name: nn.Embedding(self.task_num+1, self.te_dim)}))
-        self.lora_gate.update(nn.ModuleDict({adapter_name: Gate(peft_config, adapter_name)}))
-
 
     def forward(self, 
                 input_ids=None, 
@@ -1215,18 +1209,6 @@ class PeftModelForCausalLMShared(PeftModelForCausalLM):
                 **kwargs):
         
         peft_config = self.active_peft_config
-
-        if kwargs["task_id"] is not None:
-            task_id = kwargs["task_id"]
-            if len(task_id.shape) < 2:  # one-hot
-                expert_weight = self.lora_gate[self.active_adapter](self.lora_task_embedding[self.active_adapter](task_id))
-            else:   # multi-hot (bs, max_len)
-                task_emb = self.lora_task_embedding[self.active_adapter](task_id)   # (bs, max_len, em_dim)
-                multi_mask = (task_id>0)   # (bs, max_len)
-                task_emb = task_emb * multi_mask.unsqueeze(-1)  # (bs, max_len, em_dim)
-                task_emb = torch.sum(task_emb, dim=1) / torch.sum(multi_mask, dim=-1, keepdim=True)    # (bs, em_dim) / (bs, 1) = (bs, em_dim)
-                expert_weight = self.lora_gate[self.active_adapter](task_emb) # (bs, 1)
-            kwargs["task_id"] = expert_weight
 
         if not isinstance(peft_config, PromptLearningConfig):
             return self.base_model(
@@ -1281,18 +1263,6 @@ class PeftModelForCausalLMShared(PeftModelForCausalLM):
     def generate(self, **kwargs):
         peft_config = self.active_peft_config
 
-        if kwargs["task_id"] is not None:
-            task_id = kwargs["task_id"]
-            if len(task_id.shape) < 2:  # one-hot
-                expert_weight = self.lora_gate[self.active_adapter](self.lora_task_embedding[self.active_adapter](task_id))
-            else:   # multi-hot (bs, max_len)
-                task_emb = self.lora_task_embedding[self.active_adapter](task_id)   # (bs, max_len, em_dim)
-                multi_mask = (task_id>0)   # (bs, max_len)
-                task_emb = task_emb * multi_mask.unsqueeze(-1)  # (bs, max_len, em_dim)
-                task_emb = torch.sum(task_emb, dim=1) / torch.sum(multi_mask, dim=-1, keepdim=True)    # (bs, em_dim) / (bs, 1) = (bs, em_dim)
-                expert_weight = self.lora_gate[self.active_adapter](task_emb) # (bs, 1)
-            kwargs["task_id"] = expert_weight
-            
         self.base_model.prepare_inputs_for_generation = self.prepare_inputs_for_generation
         try:
             if not isinstance(peft_config, PromptLearningConfig):

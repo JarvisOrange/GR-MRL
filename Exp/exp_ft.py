@@ -16,6 +16,24 @@ from utils import My_Loss
 from tqdm import tqdm
 import time
 
+
+def collate_fn(batch):
+    def pad_sequences_2d(sequences, padding_idx=-1):
+        max_length = max(len(seq) for seq in sequences)
+        padded = torch.full((len(sequences), max_length), padding_idx, dtype=torch.long).cuda()
+        for i, seq in enumerate(sequences):
+            padded[i, :len(seq)] = torch.tensor(seq, dtype=torch.long).cuda()
+        return padded
+    
+    ref = [item['ref'] for item in batch]
+    ref = pad_sequences_2d(ref)
+
+    for i in range(len(batch)):
+        batch[i]['ref'] = ref[i]
+
+    return batch
+
+
 def exp_ft(cfg, logger=None):
     
     debug  = cfg['debug']
@@ -29,11 +47,12 @@ def exp_ft(cfg, logger=None):
     flag = 'source_train'
 
     # init model and vectorbase
-    model = GR_MRL(cfg, mode=flag)
+    model = GR_MRL(cfg, mode=flag).cuda()
+    model.update_mode(flag)
 
     # init exp settings
     bs = cfg['flag'][flag]['batch_size']
-    lr = cfg[flag]['lr']
+    lr = cfg['flag'][flag]['lr']
 
     criterion = My_Loss()
 
@@ -48,10 +67,14 @@ def exp_ft(cfg, logger=None):
     
     # init dataset and dataloader
     source_dataset = PromptDataset(cfg, dataset_src, 'src')
-    source_dataloader = DataLoader(source_dataset, batch_size = bs, shuffle = True, drop_last=False)
+    source_dataloader = DataLoader(source_dataset, 
+                                    batch_size = bs, 
+                                    shuffle = True, 
+                                    drop_last=False,
+                                    collate_fn=collate_fn)
 
     # source train
-    for epoch in tqdm(cfg[flag]['epoch']):
+    for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
         train_loss = []
         # epoch_time = time.time()
 
@@ -73,17 +96,22 @@ def exp_ft(cfg, logger=None):
 
 
     # target finetune
-    flag = 'target train'
+    flag = 'target_train'
 
     model.update_mode(flag)
 
     bs = cfg['flag'][flag]['batch_size']
-    lr = cfg[flag]['lr']
+    lr = cfg['flag'][flag]['lr']
 
     target_dataset = PromptDataset(cfg, dataset_src, 'trg')
-    target_dataloader = DataLoader(target_dataset, batch_size = bs, shuffle = True, drop_last=False)
+    target_dataloader = DataLoader(target_dataset, 
+                                    batch_size = bs, 
+                                    shuffle = True, 
+                                    drop_last=False,
+                                    collate_fn=collate_fn)
 
-    for epoch in tqdm(cfg[flag]['epoch']):
+
+    for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
         train_loss = []
         # epoch_time = time.time()
         for batch in target_dataloader:
@@ -108,7 +136,11 @@ def exp_ft(cfg, logger=None):
     model.test()
 
     test_dataset = PromptDataset(cfg, dataset_src, 'test')
-    test_dataloader = DataLoader(test_dataset, batch_size = bs, shuffle = False, drop_last=False)
+    test_dataloader = DataLoader(test_dataset, 
+                                batch_size = bs, 
+                                shuffle = False, 
+                                drop_last=False,
+                                collate_fn=collate_fn)
 
     pred = np.zeros(len(test_dataset), cfg['pre_num'])
     truth = np.zeros(len(test_dataset), cfg['pre_num'])

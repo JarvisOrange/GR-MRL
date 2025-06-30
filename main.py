@@ -79,7 +79,7 @@ def main():
         exp_pretrain(cfg, logger=_logger)
 
         _logger.info('<<<<<---------- cluster ---------->>>>>'.format(stage_dict[stage]))
-        exp_time_cluster(cfg, logger=_logger)
+        # exp_time_cluster(cfg, logger=_logger)
         exp_road_cluster(cfg, logger=_logger)
 
         _logger.info('<<<<<---------- rag ---------->>>>>'.format(stage_dict[stage]))

@@ -115,7 +115,6 @@ class RoadData():
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
 
         if flag == 'test':
-            print(X.shape)
             X = X[:, :, 288 * self.target_day:]
 
             self.his_num = self.cfg['his_num']
@@ -234,7 +233,7 @@ class RoadData():
 
     def get_x_num(self):
         return self.x.shape[0]
-    
+
     
     def get_road_num(self):
         return self.road_num

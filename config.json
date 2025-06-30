@@ -2,15 +2,13 @@
  
     "debug": 1,
 
+    "stage": 4,
+
     "exp_tag": "raw",
 
     "device": "cuda:0",
 
     "seed": 42,
-
-    "stage": 4,
-
-
 
     "flag":  {
         "pretrain": {
@@ -20,22 +18,21 @@
                 "weight_decay": 1e-2,
                 "train_val_test":[0.7, 0.1, 0.2]
         },
-        "source_train":{
+
+        "source_train": {
             "batch_size": 16,
-            "source_train_epochs": 1000,
-            "source_train_lr": 0.0001
+            "epoch": 100,
+            "lr": 0.0001
         },
 
         "target_train":{
             "batch_size": 16,
-            "target_train_epochs": 1000,
-            "target_train_lr": 0.0001
+            "epoch": 3,
+            "lr": 0.0001
         },
 
          "test":{
-            "batch_size": 16,
-            "target_train_epochs": 1000,
-            "target_train_lr": 0.0001
+            "batch_size": 16
         },
 
         "time_cluster":{
@@ -97,17 +94,14 @@
     },
 
     
-    
-
     "dataset_src_trg": "B-L-C_S",
 
     "laplacian_dim": 64,
 
-    "time_cluster_k": 32,
-
-    "road_cluster_k": 16, 
-
     
+    "time_cluster_k": 16,
+
+    "road_cluster_k": 4, 
 
     "retrieve_k": 1,
 
@@ -131,23 +125,22 @@
     },
 
     "GR_MRL": {
-        "time_expert": 32,
-        "road_expert": 16,
-        "expert_dim": 64
+        "expert_dim": 64,
+        "max_length": 2048
     },
 
-    "LLM_path": "./LLM/chatglm2-6b-int",
+    "LLM_path": "./LLM/glm-4-9b",
 
     "lora_method": "stmoelora",
 
-    "lora_rank": 8,
+    "lora_rank": 16,
     "lora_dropout": 0.1,
     "lora_alpha": 32,
 
     "target_modules": ["query_key_value"],
     "modules_to_save": ["embed_tokens", "lm_head", "mapping_layer", "output_layer"],
 
-    "top_k": 2,
+    "expert_top_k": 2,
 
     "drop_last": true,
 

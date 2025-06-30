@@ -40,7 +40,7 @@ class MMOELoraSTConfig(LoraConfig):
     expert_r_num: int = field(default=16, metadata={"help": "The number of road pattern."})
     gate_embed_dim: int = field(default=128, metadata={"help": "The dimension of the gate embedding."})
     gate_embed_path: str = field(default="", metadata={"help": "The path to the gate embedding file."})
-    top_k: int = field(default=2, metadata={"help": "The number of top-k experts to use."})
+    expert_top_k: int = field(default=2, metadata={"help": "The number of top-k experts to use."})
 
     def __post_init__(self):
         self.peft_type = PeftType.MMOELORAST
@@ -94,7 +94,7 @@ class MMOELoraSTModel(LoraModel):
             'gate_embed_path': lora_config.gate_embed_path,
             "expert_t_num": lora_config.expert_t_num,
             "expert_r_num": lora_config.expert_r_num,
-            "top_k": lora_config.top_k
+            "expert_top_k": lora_config.expert_top_k
         }
         key_list = [key for key, _ in self.model.named_modules()]   # all module in raw model
         for key in key_list:
@@ -188,6 +188,18 @@ class MMOELoraSTLayer(LoraLayer):
         self.gate_embed_dim = gate_embed_dim
         self.gate_embed_path = gate_embed_path
 
+        #time expert
+        self.lora_A_t = nn.ModuleDict({})
+        self.lora_B_t = nn.ModuleDict({})
+
+        #road expert
+        self.lora_A_r = nn.ModuleDict({})
+        self.lora_B_r = nn.ModuleDict({})
+
+        # Shared Expert
+        self.lora_A_S = nn.ModuleDict({})
+        self.lora_B_S = nn.ModuleDict({})
+
     
     def update_layer(self, adapter_name, r, lora_alpha, lora_dropout, init_lora_weights):
         self.r[adapter_name] = r
@@ -224,19 +236,18 @@ class MMOELoraSTLayer(LoraLayer):
             # initialize A the same way as the default for nn.Linear and B to zero
             for i in range(self.expert_t_num):
                 nn.init.normal_(self.lora_A_t[adapter_name].loraA[i].mlp.weight, mean=0.0, std=0.01)
-                nn.init.zeros_(self.lora_B[adapter_name].loraB[i].mlp.weight)
+                nn.init.zeros_(self.lora_B_t[adapter_name].loraB[i].mlp.weight)
 
         if adapter_name in self.lora_A_r.keys():
             # initialize A the same way as the default for nn.Linear and B to zero
-            for i in range(self.expert_t_num):
+            for i in range(self.expert_r_num):
                 nn.init.normal_(self.lora_A_r[adapter_name].loraA[i].mlp.weight, mean=0.0, std=0.01)
-                nn.init.zeros_(self.lora_B[adapter_name].loraB[i].mlp.weight)
+                nn.init.zeros_(self.lora_B_r[adapter_name].loraB[i].mlp.weight)
         
         if adapter_name in self.lora_A_S.keys():
             # initialize A the same way as the default for nn.Linear and B to zero
-            for i in range(self.expert_t_num):
-                nn.init.normal_(self.lora_A_S[adapter_name].loraA[i].mlp.weight, mean=0.0, std=0.01)
-                nn.init.zeros_(self.lora_B[adapter_name].loraB[i].mlp.weight)
+            nn.init.normal_(self.lora_A_S[adapter_name].weight, mean=0.0, std=0.01)
+            nn.init.zeros_(self.lora_B_S[adapter_name].weight)
 
 
 
@@ -259,7 +270,7 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
         self.expert_r_num = kwargs.pop("expert_r_num", 8)
         self.gate_embed_dim = kwargs.pop("gate_embed_dim", 128)
         self.gate_embed_path = kwargs.pop("gate_embed_path", "")
-        self.top_k = kwargs.pop('top_k', 2)
+        self.expert_top_k = kwargs.pop('expert_top_k', 2)
 
 
         nn.Linear.__init__(self, in_features, out_features, **kwargs)
@@ -274,13 +285,13 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
         # init the Gate network
         
 
-        gate_t_embed_path, gate_r_embed_path = self.gate_embed_dim.split(';')
+        gate_t_embed_path, gate_r_embed_path = self.gate_embed_path.split(';')
 
         self.lora_gate_t = nn.ModuleDict({})
-        self.lora_gate_t.update(nn.ModuleDict({adapter_name: Gate(in_features, self.expert_t_num, self.gate_embed_dim, gate_t_embed_path, self.top_k)}))
+        self.lora_gate_t.update(nn.ModuleDict({adapter_name: Gate(in_features, self.expert_t_num, self.gate_embed_dim, gate_t_embed_path, self.expert_top_k)}))
 
         self.lora_gate_r = nn.ModuleDict({})
-        self.lora_gate_r.update(nn.ModuleDict({adapter_name: Gate(in_features, self.expert_r_num,  self.gate_embed_dim, gate_r_embed_path, self.top_k)}))
+        self.lora_gate_r.update(nn.ModuleDict({adapter_name: Gate(in_features, self.expert_r_num,  self.gate_embed_dim, gate_r_embed_path, self.expert_top_k)}))
         
         # Freezing the pre-trained weight matrix
         self.weight.requires_grad = False
@@ -424,9 +435,21 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
             x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
 
+            #Shared
+            print(x.shape)
+            print(self.lora_A_S[self.active_adapter](self.lora_dropout[self.active_adapter](x)).shape)
+            result += (
+                self.lora_B_S[self.active_adapter](
+                    self.lora_A_S[self.active_adapter](self.lora_dropout[self.active_adapter](x))
+                )
+                * self.scaling[self.active_adapter]
+            )
+
             # time
             expert_weight_t = self.lora_gate_t[self.active_adapter](x)
             for i in range(self.expert_t_num):
+                print(x.shape)
+                print(self.lora_A_t[self.active_adapter].loraA[0](self.lora_dropout[self.active_adapter](x)).shape)
                 result += ( # lora process
                     self.lora_B_t[self.active_adapter].loraB[i](
                         self.lora_A_t[self.active_adapter].loraA[i](self.lora_dropout[self.active_adapter](x)),
@@ -446,13 +469,7 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                     * expert_weight_r[..., i].unsqueeze(-1).unsqueeze(0)
                 )
 
-            #Shared
-            result += (
-                self.lora_B_S[self.active_adapter](
-                    self.lora_A_S[self.active_adapter](self.lora_dropout[self.active_adapter](x))
-                )
-                * self.scaling[self.active_adapter]
-            )
+            
 
         else:
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
@@ -472,6 +489,7 @@ class MMOELinearA(nn.Module):
         self.expert_num = expert_num
         self.in_features, self.out_features = in_features, out_features
         self.loraA = nn.ModuleList([])
+
 
         assert self.out_features % self.expert_num == 0  # lora rank should be divided by expert number
         self.r = self.out_features // self.expert_num
@@ -537,22 +555,18 @@ class Expert(nn.Module):
 
 class Gate(nn.Module):
 
-    def __init__(self, input_size, expert_num, gate_embed_dim, gate_embed_path, top_k, noise_epsilon=1e-2):
-
+    def __init__(self, input_size, expert_num, gate_embed_dim, gate_embed_path, expert_top_k):
         super().__init__()
 
-        self.k = top_k
-
+        self.k = expert_top_k
         self.expert_num = expert_num
         
         pattern_embed = torch.load(gate_embed_path)
 
         assert expert_num == pattern_embed.shape[0], "pattern_shape mismatch expert_num"
 
-        self.patterns = nn.Parameter(pattern_embed, require_grad=False)
-
+        self.patterns = nn.Parameter(pattern_embed, requires_grad=False)
         self.projection = nn.Linear(input_size, gate_embed_dim)
-
         self.w_noise = nn.Linear(input_size, expert_num, bias=False)
     
     def forward(self, x):
@@ -561,12 +575,9 @@ class Gate(nn.Module):
         
         # attention score
         query = self.projection(x_pooled)  # (batch_size, embed_dim)
-        
         scores = torch.matmul(query, self.patterns.transpose(0, 1))  # (batch_size, expert_num)
 
-        # add noise
-        noise = self.w_noise(x) 
-        gates = scores + self.noise_epsilon * noise
+        gates = scores 
 
         _, indices = torch.topk(gates, self.k, dim=-1) # (b,k) (b,k)
 
@@ -576,7 +587,6 @@ class Gate(nn.Module):
         gates = gates * mask
         expert_weights= F.softmax(gates, dim=-1)
 
-    
         return expert_weights
 
 

@@ -22,9 +22,9 @@ def exp_time_cluster(cfg, logger=None):
     temp, _ = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
 
-    save_dir = './Save/time_embed/{}/'.format(dataset_src)
+    save_dir = './Save/time_pattern/{}/'.format(dataset_src)
 
-    embed_path = save_dir + 'embed_src.pt'.format(dataset_src)
+    embed_path = save_dir + 'embed.pt'.format(dataset_src)
 
     if not os.path.exists(embed_path):
 
@@ -48,7 +48,7 @@ def exp_time_cluster(cfg, logger=None):
         time_embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
         counter = 0
-        for batch in dataloader:
+        for batch in tqdm(dataloader, len(dataloader), desc='Time Cluster'):
 
             x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
             
@@ -70,9 +70,9 @@ def exp_time_cluster(cfg, logger=None):
         
         ensure_dir(save_dir)
 
-        torch.save(time_embed_pool, save_dir + 'embed_src.pt')
+        torch.save(time_embed_pool, save_dir + 'embed.pt')
 
-        logger.info('Time Embed Saved at {}'.format(save_dir + 'embed_src.pt'))        
+        logger.info('Time Embed Saved at {}'.format(save_dir + 'embed.pt'))        
 
 
     else:

@@ -98,6 +98,20 @@ def generate_related(dataset_src, time_embed_pool, logger):
 
 
 def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
+    if flag == 'source_train':
+        embed_path = './Save/time_embed/{}/embed_src.pt'.format(dataset_src)
+    if flag == 'target_train':
+        embed_path = './Save/time_embed/{}/embed_target.pt'.format(dataset_src)
+    if flag == 'test':
+        embed_path = './Save/time_embed/{}/embed_test.pt'.format(dataset_src)
+
+    if not os.path.exists(embed_path):
+        save_flag = 'True'
+        num_embed = dataloader.dataset.get_x_num() * int(cfg['his_num'] /cfg['TSFormer']['patch_size'])
+        dim_embed = cfg['TSFormer']['out_dim']  # 128
+        embed_pool = torch.zeros([num_embed, dim_embed]).cuda().float()
+    else:
+        save_flag = 'False'
         
     model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
     if not os.path.exists(model_path):
@@ -127,18 +141,26 @@ def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, data
 
         B, L, D = H.shape # B * L, D
 
+        if save_flag == 'True':
+            temp_H = H.reshape(B*L, D)
+            embed_pool[cur:cur+B*int(cfg['his_num'] /cfg['TSFormer']['patch_size']), :] = temp_H
+
         # H (B, 12, D) -> (B, 1, D) calculate B[B, 9:12, D] mean
         H = H[:, -3:, :].mean(dim=1) # B, D
         H = H.reshape(B, D)
-
+            
         related_dict = vectorbase.query_related(H,  k)
 
-        for i in related_dict.keys():
 
-            prompt_index= cur + i
-            prompt_base = "Dataset Description: {}".format(dataset_description[city]) + \
-                f"Dataset statisctis: The mean speed value of the dataset is {str(means)} and the std speed value of the dataset is {str(stds)}" + \
-                f"Task Description: Given the history data and reference data which may be useful, predict the next {str(cfg['pre_num'])} steps"
+        for i in related_dict.keys():
+            if flag == 'test':
+                prompt_index = cur + i + cfg['target_day']
+            else:
+                prompt_index = cur + i 
+            
+            prompt_base = "Dataset Description: {}\n".format(dataset_description[city]) + \
+                f"Dataset statisctis: The mean speed value of the dataset is {str(means)} and the std speed value of the dataset is {str(stds)}.\n" + \
+                f"Task Description: Given the history data and reference data which may be useful, predict the next {str(cfg['pre_num'])} steps.\n"
             
             if related_dict[i] is not None:
                 prompt_list[prompt_index] = {'index': prompt_index, 
@@ -150,8 +172,12 @@ def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, data
                                              'ref': [], 
                                              'prompt': prompt_base, 
                                              'label': y[i,:].cpu().numpy().tolist()}
+                
 
         cur += B
+    if save_flag == 'True':
+        torch.save(embed_pool, embed_path)
+        logger.info('For ft: {} Embed Saved at {}'.format(flag, embed_path))
 
     return prompt_list
             
@@ -164,7 +190,7 @@ def exp_rag(cfg, logger=None):
     temp, dataset_trg = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
 
-    embed_path = './Save/time_embed/{}/embed_src.pt'.format(dataset_src)
+    embed_path = './Save/time_pattern/{}/embed.pt'.format(dataset_src)
     
     if os.path.exists(embed_path):
         time_embed_pool = torch.load(embed_path)
@@ -190,8 +216,6 @@ def exp_rag(cfg, logger=None):
 
     logger.info("Start to generate prompt json files for dataset: {}".format(dataset_src))
 
-
-    
     flag = 'source_train'
     database.update_mode(flag)
     source_provider = RoadDataProvider(cfg, flag=flag, logger=logger)

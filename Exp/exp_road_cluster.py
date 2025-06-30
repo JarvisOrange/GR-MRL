@@ -39,7 +39,7 @@ def exp_road_cluster(cfg, logger=None):
 
     road_pattern = torch.zeros([K, dim_embed]).float().cpu()
 
-    for k, dataloader in enumerate(dataloader_list):
+    for k, dataloader in tqdm(enumerate(dataloader_list), total=len(dataloader_list), desc='Road Cluster'):
         num_embed = dataloader.dataset.get_x_num()
 
         embed_pool = torch.zeros([num_embed, dim_embed]).float()
