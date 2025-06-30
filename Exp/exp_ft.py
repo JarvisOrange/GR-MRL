@@ -76,11 +76,12 @@ def exp_ft(cfg, logger=None):
     # source train
     for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
         train_loss = []
-        # epoch_time = time.time()
 
-        for batch in source_dataloader:
+        for i, batch in enumerate(source_dataloader):
             output = model(batch)
-            label = batch['truth']
+            output = output.float()
+            label = [item['label'] for item in batch]
+            label = torch.stack(label, dim=0).float().cuda()
 
             loss = criterion(output, label)
             loss.backward()
@@ -88,11 +89,11 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            logger.info("{} Target Train Epoch: {} | Loss: {1:.3f}".format(dataset_trg, epoch + 1, train_loss))
+            logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(source_dataloader), loss.item()))
         
         train_loss = np.average(train_loss)
 
-        logger.info("{} Source Train Epoch: {} | Loss: {1:.3f}".format(dataset_src, epoch + 1, train_loss))
+        logger.info("{} Source Train Epoch: {} | Loss: {:.3f}".format(dataset_src, epoch + 1, train_loss))
 
 
     # target finetune
@@ -114,10 +115,12 @@ def exp_ft(cfg, logger=None):
     for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
         train_loss = []
         # epoch_time = time.time()
-        for batch in target_dataloader:
+        for i, batch in enumerate(target_dataloader):
             
             output = model(batch)
-            label = batch['truth']
+            output = output.float()
+            label = [item['label'] for item in batch]
+            label = torch.stack(label, dim=0).cuda()
 
             loss = criterion(output, label)
             loss.backward()
@@ -125,9 +128,11 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
+            logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(target_dataloader), loss.item()))
+
         train_loss = np.average(train_loss)
 
-        logger.info("{} Target Train Epoch: {} | Loss: {1:.3f}".format(dataset_trg, epoch + 1, train_loss))
+        logger.info("{} Target Train Epoch: {} | Loss: {:.3f}".format(dataset_trg, epoch + 1, train_loss))
             
     # inference  
     flag = 'test'   
@@ -146,9 +151,11 @@ def exp_ft(cfg, logger=None):
     truth = np.zeros(len(test_dataset), cfg['pre_num'])
 
     cur = 0
-    for batch in test_dataloader:
+    for i, batch in enumerate(test_dataloader):
         output = model(batch)
-        label = batch['truth']
+        output = output.float()
+        label = [item['label'] for item in batch]
+        label = torch.stack(label, dim=0).float().cuda()
 
         pred[cur:cur+output.shape[0], :] = output
         truth[cur:cur+output.shape[0], :] = label
@@ -157,7 +164,7 @@ def exp_ft(cfg, logger=None):
 
     MSE, RMSE, MAE, MAPE = calc_metric(pred, truth)
 
-    logger.info("{} Test: MSE: {1:.3f}, RMSE: {1:.3f}, MAE: {1:.3f}, MAPE: {1:.3f}".format(dataset_trg, MSE, RMSE, MAE, MAPE))
+    logger.info("{} Test: MSE: {:.3f}, RMSE: {:.3f}, MAE: {:.3f}, MAPE: {:.3f}".format(dataset_trg, MSE, RMSE, MAE, MAPE))
         
 
 
