@@ -438,9 +438,7 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
             # time
             expert_weight_t = self.lora_gate_t[self.active_adapter](x)
-            # Use MMOELinearA to get list of outputs
             lora_A_outputs_t = self.lora_A_t[self.active_adapter](self.lora_dropout[self.active_adapter](x))
-            # Use MMOELinearB to process the list
             lora_B_outputs_t = self.lora_B_t[self.active_adapter](lora_A_outputs_t)
             
             # Sum up all expert outputs with their weights
@@ -448,14 +446,12 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                 result += (
                     lora_B_outputs_t[i]
                     * self.scaling[self.active_adapter]
-                    * expert_weight_t[..., i].unsqueeze(-1).unsqueeze(0)
-                )
+                    * expert_weight_t[..., i].unsqueeze(1).unsqueeze(2) # I think .view(-1, 1, 1) is better for understanding
+                 )
 
             #Road
             expert_weight_r = self.lora_gate_r[self.active_adapter](x)
-            # Use MMOELinearA to get list of outputs
             lora_A_outputs_r = self.lora_A_r[self.active_adapter](self.lora_dropout[self.active_adapter](x))
-            # Use MMOELinearB to process the list
             lora_B_outputs_r = self.lora_B_r[self.active_adapter](lora_A_outputs_r)
             
             # Sum up all expert outputs with their weights
@@ -463,11 +459,8 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                 result += (
                     lora_B_outputs_r[i]
                     * self.scaling[self.active_adapter]
-                    * expert_weight_r[..., i].unsqueeze(-1).unsqueeze(0)
-                )
-
-            
-
+                    * expert_weight_r[..., i].unsqueeze(1).unsqueeze(2) # I think .view(-1, 1, 1) is better for understanding
+                 )
         else:
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 

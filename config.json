@@ -20,19 +20,19 @@
         },
 
         "source_train": {
-            "batch_size": 16,
+            "batch_size": 4,
             "epoch": 100,
             "lr": 0.0001
         },
 
         "target_train":{
-            "batch_size": 16,
+            "batch_size": 4,
             "epoch": 3,
             "lr": 0.0001
         },
 
          "test":{
-            "batch_size": 16
+            "batch_size": 4
         },
 
         "time_cluster":{
