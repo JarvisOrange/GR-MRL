@@ -334,9 +334,9 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
             #merge road
             expert_weight_r = self.lora_gate_r[self.active_adapter](x)
-            for i in range(self.expert_t_num):
-                lora_A_weights = self.lora_A_t[self.active_adapter].loraA[i].mlp.weight
-                lora_B_weights = self.lora_B_t[self.active_adapter].loraB[i].mlp.weight
+            for i in range(self.expert_r_num):
+                lora_A_weights = self.lora_A_r[self.active_adapter].loraA[i].mlp.weight
+                lora_B_weights = self.lora_B_r[self.active_adapter].loraB[i].mlp.weight
                 self.weight.data += (
                     transpose(
                         lora_B_weights @ lora_A_weights,
@@ -389,9 +389,9 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
             #unmerge road
             expert_weight_r = self.lora_gate_r[self.active_adapter](x)
-            for i in range(self.expert_t_num):
-                lora_A_weights = self.lora_A_t[self.active_adapter].loraA[i].mlp.weight
-                lora_B_weights = self.lora_B_t[self.active_adapter].loraB[i].mlp.weight
+            for i in range(self.expert_r_num):
+                lora_A_weights = self.lora_A_r[self.active_adapter].loraA[i].mlp.weight
+                lora_B_weights = self.lora_B_r[self.active_adapter].loraB[i].mlp.weight
                 self.weight.data -= (
                     transpose(
                         lora_B_weights @ lora_A_weights,
@@ -438,25 +438,30 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
             # time
             expert_weight_t = self.lora_gate_t[self.active_adapter](x)
+            # Use MMOELinearA to get list of outputs
+            lora_A_outputs_t = self.lora_A_t[self.active_adapter](self.lora_dropout[self.active_adapter](x))
+            # Use MMOELinearB to process the list
+            lora_B_outputs_t = self.lora_B_t[self.active_adapter](lora_A_outputs_t)
+            
+            # Sum up all expert outputs with their weights
             for i in range(self.expert_t_num):
-                print(self.lora_B_t[self.active_adapter])
-                print(self.lora_B_t[self.active_adapter].loraB)
-                print(self.lora_B_t[self.active_adapter].loraB[i])
-                result += ( # lora process
-                    self.lora_B_t[self.active_adapter].loraB[i](
-                        self.lora_A_t[self.active_adapter].loraA[i](self.lora_dropout[self.active_adapter](x))
-                    )
+                result += (
+                    lora_B_outputs_t[i]
                     * self.scaling[self.active_adapter]
                     * expert_weight_t[..., i].unsqueeze(-1).unsqueeze(0)
                 )
 
             #Road
             expert_weight_r = self.lora_gate_r[self.active_adapter](x)
+            # Use MMOELinearA to get list of outputs
+            lora_A_outputs_r = self.lora_A_r[self.active_adapter](self.lora_dropout[self.active_adapter](x))
+            # Use MMOELinearB to process the list
+            lora_B_outputs_r = self.lora_B_r[self.active_adapter](lora_A_outputs_r)
+            
+            # Sum up all expert outputs with their weights
             for i in range(self.expert_r_num):
-                result += ( # lora process
-                    self.lora_B_r[self.active_adapter].loraB[i](
-                        self.lora_A_r[self.active_adapter].loraA[i](self.lora_dropout[self.active_adapter](x)),
-                    )
+                result += (
+                    lora_B_outputs_r[i]
                     * self.scaling[self.active_adapter]
                     * expert_weight_r[..., i].unsqueeze(-1).unsqueeze(0)
                 )
