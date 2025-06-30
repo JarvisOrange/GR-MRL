@@ -133,7 +133,7 @@
 
     "lora_method": "stmoelora",
 
-    "lora_rank": 16,
+    "lora_rank": 32,
     "lora_dropout": 0.1,
     "lora_alpha": 32,
 

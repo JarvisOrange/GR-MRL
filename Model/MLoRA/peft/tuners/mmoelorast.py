@@ -283,8 +283,6 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                                )
         
         # init the Gate network
-        
-
         gate_t_embed_path, gate_r_embed_path = self.gate_embed_path.split(';')
 
         self.lora_gate_t = nn.ModuleDict({})
@@ -363,17 +361,13 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
     def unmerge(self, x):
         if self.active_adapter not in self.lora_A_t.keys():
             return
-        
         if self.active_adapter not in self.lora_A_r.keys():
             return
-        
         if self.active_adapter not in self.lora_A_S.keys():
             return
-        
         if self.merged:
             warnings.warn("Already merged. Nothing to do.")
             return
-        
         if not self.merged:
             warnings.warn("Already unmerged. Nothing to do.")
             return
@@ -432,12 +426,9 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
         elif self.r[self.active_adapter] > 0 and not self.merged:   # general lora process
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
-
             x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
 
             #Shared
-            print(x.shape)
-            print(self.lora_A_S[self.active_adapter](self.lora_dropout[self.active_adapter](x)).shape)
             result += (
                 self.lora_B_S[self.active_adapter](
                     self.lora_A_S[self.active_adapter](self.lora_dropout[self.active_adapter](x))
@@ -448,18 +439,19 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
             # time
             expert_weight_t = self.lora_gate_t[self.active_adapter](x)
             for i in range(self.expert_t_num):
-                print(x.shape)
-                print(self.lora_A_t[self.active_adapter].loraA[0](self.lora_dropout[self.active_adapter](x)).shape)
+                print(self.lora_B_t[self.active_adapter])
+                print(self.lora_B_t[self.active_adapter].loraB)
+                print(self.lora_B_t[self.active_adapter].loraB[i])
                 result += ( # lora process
                     self.lora_B_t[self.active_adapter].loraB[i](
-                        self.lora_A_t[self.active_adapter].loraA[i](self.lora_dropout[self.active_adapter](x)),
+                        self.lora_A_t[self.active_adapter].loraA[i](self.lora_dropout[self.active_adapter](x))
                     )
                     * self.scaling[self.active_adapter]
                     * expert_weight_t[..., i].unsqueeze(-1).unsqueeze(0)
                 )
 
             #Road
-            expert_weight_r = self.lora_gate_t[self.active_adapter](x)
+            expert_weight_r = self.lora_gate_r[self.active_adapter](x)
             for i in range(self.expert_r_num):
                 result += ( # lora process
                     self.lora_B_r[self.active_adapter].loraB[i](
@@ -475,11 +467,8 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
         result = result.to(previous_dtype)
-
         return result
     
-
-
 class MMOELinearA(nn.Module):
     '''MMOE based LoRA block'''
     def __init__(self, in_features, out_features, expert_num) -> None:
@@ -490,13 +479,11 @@ class MMOELinearA(nn.Module):
         self.in_features, self.out_features = in_features, out_features
         self.loraA = nn.ModuleList([])
 
-
         assert self.out_features % self.expert_num == 0  # lora rank should be divided by expert number
         self.r = self.out_features // self.expert_num
         
         for _ in range(self.expert_num):
             self.loraA.append(Expert(self.in_features, self.r))
-
     
     def forward(self, x):
         '''input x is a vector, return output is a list'''
@@ -505,15 +492,11 @@ class MMOELinearA(nn.Module):
             outputs.append(self.loraA[i](x))
 
         return outputs
-    
-
 
 class MMOELinearB(nn.Module):
     '''MMOE based LoRA block'''
     def __init__(self, in_features, out_features, expert_num) -> None:
-
         super().__init__()
-
         self.expert_num = expert_num
         self.in_features, self.out_features = in_features, out_features
         self.loraB = nn.ModuleList([])
@@ -523,7 +506,6 @@ class MMOELinearB(nn.Module):
         
         for _ in range(self.expert_num):
             self.loraB.append(Expert(self.r, self.out_features))
-
     
     def forward(self, x):
         '''input x is a list, return output is also a list'''
@@ -533,28 +515,17 @@ class MMOELinearB(nn.Module):
 
         return outputs
 
-
-
 class Expert(nn.Module):
-
     def __init__(self, in_features, out_features):
-        
         super().__init__()
-
         self.in_features, self.out_features = in_features, out_features
         self.mlp = nn.Linear(self.in_features, self.out_features, bias=False)
         self.weight = self.mlp.weight
     
-
     def forward(self, x):
-        # LoRA A or B block
-        y = self.mlp(x)
-
-        return y
-
+        return self.mlp(x)
 
 class Gate(nn.Module):
-
     def __init__(self, input_size, expert_num, gate_embed_dim, gate_embed_path, expert_top_k):
         super().__init__()
 
@@ -562,7 +533,6 @@ class Gate(nn.Module):
         self.expert_num = expert_num
         
         pattern_embed = torch.load(gate_embed_path)
-
         assert expert_num == pattern_embed.shape[0], "pattern_shape mismatch expert_num"
 
         self.patterns = nn.Parameter(pattern_embed, requires_grad=False)
