@@ -81,7 +81,7 @@ def exp_pretrain(cfg, logger=None):
             
             unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
             
-            MSE,RMSE,MAE,MAPE = calc_metric(unnorm_out, unnorm_label)
+            MSE,RMSE,MAE,MAPE = calc_metric_torch(unnorm_out, unnorm_label)
             
             total_mse.append(MSE.cpu().detach().numpy())
             total_rmse.append(RMSE.cpu().detach().numpy())
@@ -123,7 +123,7 @@ def exp_pretrain(cfg, logger=None):
 
             unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
             
-            MSE,RMSE,MAE,MAPE = calc_metric(unnorm_out, unnorm_label)
+            MSE,RMSE,MAE,MAPE = calc_metric_torch(unnorm_out, unnorm_label)
             
             total_mse.append(MSE.cpu().detach().numpy())
             total_rmse.append(RMSE.cpu().detach().numpy())
@@ -171,7 +171,7 @@ def exp_pretrain(cfg, logger=None):
 
             unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
             
-            MSE,RMSE,MAE,MAPE = calc_metric(unnorm_out, unnorm_label)
+            MSE,RMSE,MAE,MAPE = calc_metric_torch(unnorm_out, unnorm_label)
             
             total_mse.append(MSE.cpu().detach().numpy())
             total_rmse.append(RMSE.cpu().detach().numpy())

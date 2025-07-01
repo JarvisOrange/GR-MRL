@@ -79,8 +79,8 @@ def exp_ft(cfg, logger=None):
     if debug: EPOCH = 1
     for epoch in tqdm(range(EPOCH)):
         train_loss = []
-
         for i, batch in enumerate(source_dataloader):
+            if debug and i == 10: break
             output = model(batch)
             output = output.float()
             label = [item['label'] for item in batch]
@@ -93,14 +93,14 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            if i%20 == 0:
+            if i%100 == 0:
                 torch.cuda.empty_cache()
-                logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(source_dataloader), np.average(train_loss)))
+                logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(source_dataloader), np.average(train_loss)))
 
         
         train_loss = np.average(train_loss)
 
-        logger.info("{} Source Train Epoch: {} | Loss: {:.3f}".format(dataset_src, epoch + 1, train_loss))
+        logger.info("{} Source Train Epoch: {} | Loss: {:.3f}".format(dataset_src, epoch , train_loss))
 
 
     # target finetune
@@ -133,7 +133,8 @@ def exp_ft(cfg, logger=None):
         train_loss = []
         # epoch_time = time.time()
         for i, batch in enumerate(target_dataloader):
-            
+            if debug and i == 10: break
+
             output = model(batch)
             output = output.float()
             label = [item['label'] for item in batch]
@@ -146,19 +147,22 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            if i%10 == 0:
+            if i%100 == 0:
                 torch.cuda.empty_cache()
-                logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(target_dataloader), np.average(train_loss)))
+                logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(target_dataloader), np.average(train_loss)))
 
         train_loss = np.average(train_loss)
 
-        logger.info("{} Target Train Epoch: {} | Loss: {:.3f}".format(dataset_trg, epoch + 1, train_loss))
+        logger.info("{} Target Train Epoch: {} | Loss: {:.3f}".format(dataset_trg, epoch, train_loss))
             
     # inference  
     flag = 'test'   
     
     model.update_mode(flag)
     model.eval()
+    torch.cuda.empty_cache()
+
+    bs = cfg['flag'][flag]['batch_size']
 
     test_dataset = PromptDataset(cfg, dataset_src, 'test')
     test_dataloader = DataLoader(test_dataset, 
@@ -167,24 +171,29 @@ def exp_ft(cfg, logger=None):
                                 drop_last=False,
                                 collate_fn=collate_fn)
 
-    pred = np.zeros(len(test_dataset), cfg['pre_num'])
-    truth = np.zeros(len(test_dataset), cfg['pre_num'])
+    pred = np.zeros((len(test_dataset), cfg['pre_num']))
+    truth = np.zeros((len(test_dataset), cfg['pre_num']))
 
     cur = 0
-    for i, batch in enumerate(test_dataloader):
-        output = model(batch)
-        output = output.float()
-        label = [item['label'] for item in batch]
-        label = torch.stack(label, dim=0).float().cuda()
+    for i, batch in enumerate(test_dataloader), total=len(test_dataloader):
+        if debug and i==3: break
+        with torch.no_grad():
+            output = model(batch)
+            output = output.float()
 
-        pred[cur:cur+output.shape[0], :] = output
-        truth[cur:cur+output.shape[0], :] = label
+            bs = output.shape[0]
+
+            label = [item['label'] for item in batch]
+            label = torch.stack(label, dim=0)
+
+            pred[cur:cur+bs, :] = output.detach().cpu().numpy()
+            truth[cur:cur+bs, :] = label.cpu().numpy()
 
         cur += output.shape[0]
 
-    MSE, RMSE, MAE, MAPE = calc_metric(pred, truth)
+    MSE, RMSE, MAE, _ = calc_metric(pred, truth)
 
-    logger.info("{} Test: MSE: {:.3f}, RMSE: {:.3f}, MAE: {:.3f}, MAPE: {:.3f}".format(dataset_trg, MSE, RMSE, MAE, MAPE))
+    logger.info("{} Test: MSE: {:.3f}, RMSE: {:.3f}, MAE: {:.3f}".format(dataset_trg, MSE, RMSE, MAE))
         
 
 

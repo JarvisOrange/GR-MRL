@@ -111,7 +111,6 @@ def get_optimizer(model, args):
         raise NotImplementedError
     
 
-
 def kmeans_pytorch(X, n_clusters, max_iter=1000, tol=1e-4, device=None):
     
     #PyTorch  K-means  GPU
@@ -154,10 +153,19 @@ def kmeans_pytorch(X, n_clusters, max_iter=1000, tol=1e-4, device=None):
 def calc_metric(pred, y):
     # input B, L
 
-    MSE = torch.mean((pred - y)**2, dim = 0)
+    MSE = np.mean((pred - y)**2)
+    RMSE = np.sqrt(MSE)
+    MAE = np.mean(np.abs(pred - y))
+    MAPE = np.mean(np.abs(pred - y) / y)
+    return MSE, RMSE, MAE, MAPE
+
+def calc_metric_torch(pred, y):
+    # input B, L
+
+    MSE = torch.mean((pred - y)**2, dim=0)
     RMSE = torch.sqrt(MSE)
-    MAE = torch.mean(torch.abs(pred - y), dim = 0)
-    MAPE = torch.mean(torch.abs(pred - y) / y, dim = 0)
+    MAE = torch.mean(torch.abs(pred - y), dim=0)
+    MAPE = torch.mean(torch.abs(pred - y) / y, dim=0)
     return MSE, RMSE, MAE, MAPE
 
 

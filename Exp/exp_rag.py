@@ -99,7 +99,7 @@ def generate_related(dataset_src, time_embed_pool, logger):
 
 def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
     if flag == 'source_train':
-        embed_path = './Save/time_embed/{}/embed_src.pt'.format(dataset_src)
+        embed_path = './Save/time_embed/{}/embed_source.pt'.format(dataset_src)
     if flag == 'target_train':
         embed_path = './Save/time_embed/{}/embed_target.pt'.format(dataset_src)
     if flag == 'test':

@@ -1,13 +1,9 @@
 {
  
     "debug": 0,
-
     "stage": 4,
-
     "exp_tag": "raw",
-
     "device": "cuda:0",
-
     "seed": 42,
 
     "flag":  {
@@ -21,7 +17,7 @@
 
         "source_train": {
             "batch_size": 8,
-            "epoch": 20,
+            "epoch": 3,
             "lr": 8e-6,
             "weight_decay": 5e-2
         },
@@ -34,7 +30,7 @@
         },
 
          "test":{
-            "batch_size": 8
+            "batch_size": 128
         },
 
         "time_cluster":{
@@ -50,8 +46,6 @@
         }
     },
 
-
-    
     "dataset_info": {
         "L":{
             "nodes": 207,
@@ -151,5 +145,4 @@
     "lr": 1e-5,
     "dropout": 0.2,
     "batch_size": 32
-
 }

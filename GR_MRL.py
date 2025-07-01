@@ -57,9 +57,9 @@ class GR_MRL(nn.Module):
 
     def update_embedding(self):
         if self.mode == 'source_train':
-            embed_path = './Save/time_embed/{}/embed_src.pt'.format(self.dataset_src)
+            embed_path = './Save/time_embed/{}/embed_source.pt'.format(self.dataset_src)
         elif self.mode == 'target_train':
-            embed_path = './Save/time_embed/{}/embed_trg.pt'.format(self.dataset_src)
+            embed_path = './Save/time_embed/{}/embed_target.pt'.format(self.dataset_src)
         elif self.mode == 'test':
             embed_path = './Save/time_embed/{}/embed_test.pt'.format(self.dataset_src)
             

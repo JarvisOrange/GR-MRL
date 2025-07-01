@@ -20,14 +20,20 @@ class PromptDataset(Dataset):
 
         self.device = cfg['device']
         self.cfg = cfg
+        self.flag = flag
         
         with open(path, 'r') as f:
              self.prompt = json.load(f)
+
+        
     
     def __len__(self):
         return len(self.prompt)
     
     def __getitem__(self, id):
+        if self.flag == 'test':
+            id += self.cfg['target_day']
+
         item = self.prompt[str(id)]
 
         index =  item['index']
