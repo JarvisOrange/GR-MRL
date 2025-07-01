@@ -1,6 +1,6 @@
 {
  
-    "debug": 1,
+    "debug": 0,
 
     "stage": 4,
 
@@ -21,14 +21,16 @@
 
         "source_train": {
             "batch_size": 8,
-            "epoch": 100,
-            "lr": 0.0001
+            "epoch": 20,
+            "lr": 8e-6,
+            "weight_decay": 5e-2
         },
 
         "target_train":{
             "batch_size": 8,
             "epoch": 3,
-            "lr": 0.0001
+            "lr": 1e-5,
+            "weight_decay": 1e-2
         },
 
          "test":{
@@ -126,7 +128,7 @@
 
     "GR_MRL": {
         "expert_dim": 64,
-        "max_length": 2048
+        "max_length": 128
     },
 
     "LLM_path": "./LLM/glm-4-9b",

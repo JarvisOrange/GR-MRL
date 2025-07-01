@@ -53,6 +53,7 @@ def exp_ft(cfg, logger=None):
     # init exp settings
     bs = cfg['flag'][flag]['batch_size']
     lr = cfg['flag'][flag]['lr']
+    wd = cfg['flag'][flag]['weight_decay']
 
     criterion = My_Loss()
 
@@ -61,7 +62,7 @@ def exp_ft(cfg, logger=None):
         if p.requires_grad is True:
             trained_parameters.append(p)
 
-    opt = optim.Adam(trained_parameters, lr=lr)
+    opt = optim.AdamW(trained_parameters, lr=lr, weight_decay=wd)
 
     # time_now = time.time()
     
@@ -74,7 +75,9 @@ def exp_ft(cfg, logger=None):
                                     collate_fn=collate_fn)
 
     # source train
-    for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
+    EPOCH = cfg['flag'][flag]['epoch']
+    if debug: EPOCH = 1
+    for epoch in tqdm(range(EPOCH)):
         train_loss = []
 
         for i, batch in enumerate(source_dataloader):
@@ -85,11 +88,15 @@ def exp_ft(cfg, logger=None):
 
             loss = criterion(output, label)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             opt.step()
 
             train_loss.append(loss.item())
 
-            logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(source_dataloader), loss.item()))
+            if i%20 == 0:
+                torch.cuda.empty_cache()
+                logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(source_dataloader), np.average(train_loss)))
+
         
         train_loss = np.average(train_loss)
 
@@ -100,9 +107,18 @@ def exp_ft(cfg, logger=None):
     flag = 'target_train'
 
     model.update_mode(flag)
+    model.eval()
 
     bs = cfg['flag'][flag]['batch_size']
     lr = cfg['flag'][flag]['lr']
+    wd = cfg['flag'][flag]['weight_decay']
+
+    trained_parameters = []
+    for p in model.parameters():
+        if p.requires_grad is True:
+            trained_parameters.append(p)
+
+    opt = optim.AdamW(trained_parameters, lr=lr, weight_decay=wd)
 
     target_dataset = PromptDataset(cfg, dataset_src, 'trg')
     target_dataloader = DataLoader(target_dataset, 
@@ -111,8 +127,9 @@ def exp_ft(cfg, logger=None):
                                     drop_last=False,
                                     collate_fn=collate_fn)
 
-
-    for epoch in tqdm(range(cfg['flag'][flag]['epoch'])):
+    EPOCH = cfg['flag'][flag]['epoch']
+    if debug: EPOCH = 1
+    for epoch in tqdm(range(EPOCH)):
         train_loss = []
         # epoch_time = time.time()
         for i, batch in enumerate(target_dataloader):
@@ -124,11 +141,14 @@ def exp_ft(cfg, logger=None):
 
             loss = criterion(output, label)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             opt.step()
 
             train_loss.append(loss.item())
 
-            logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(target_dataloader), loss.item()))
+            if i%10 == 0:
+                torch.cuda.empty_cache()
+                logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch + 1, i+1, len(target_dataloader), np.average(train_loss)))
 
         train_loss = np.average(train_loss)
 
@@ -138,7 +158,7 @@ def exp_ft(cfg, logger=None):
     flag = 'test'   
     
     model.update_mode(flag)
-    model.test()
+    model.eval()
 
     test_dataset = PromptDataset(cfg, dataset_src, 'test')
     test_dataloader = DataLoader(test_dataset, 

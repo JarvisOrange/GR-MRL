@@ -38,7 +38,7 @@ class PromptDataset(Dataset):
 
         patchs_num = int(self.cfg['his_num']/self.cfg['pre_num']) #a day 24 patches
 
-        prompt_his_patchs = ' [PATCH]' * int(self.cfg['his_num']/self.cfg['pre_num'])
+        prompt_his_patchs = ' [PATCH]' * int(self.cfg['his_num']/self.cfg['pre_num']) # 12 patch
         prompt_his = 'History information: ' + prompt_his_patchs + '\n'
 
         if ref_length != 0:

@@ -76,7 +76,7 @@ class GR_MRL(nn.Module):
             )
         
         self.word_embed_dim = llm_config.hidden_size
-        
+
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.LLM_path,
             trust_remote_code=True,
@@ -85,21 +85,13 @@ class GR_MRL(nn.Module):
         special_token = {'additional_special_tokens': ['[PATCH]']}
         self.tokenizer.add_special_tokens(special_token)
 
-        # bnb_config = BitsAndBytesConfig(
-        #     load_in_4bit=True,
-        #     bnb_4bit_quant_type="nf4",  # Normal Float 4-bit
-        #     bnb_4bit_compute_dtype=torch.bfloat16,  # 使用 BF16 进行计算
-        #     bnb_4bit_use_double_quant=True,  # 二阶量化
-        #     )
-
         self.llm = AutoModelForCausalLM.from_pretrained(
             self.LLM_path,
-            # quantization_config=bnb_config,
             torch_dtype=torch.bfloat16,
             device_map='auto',
             use_cache=False,
             trust_remote_code=True
-        ).cuda()
+        )
 
         self.llm.resize_token_embeddings(len(self.tokenizer))
         self.llm.gradient_checkpointing_enable()
