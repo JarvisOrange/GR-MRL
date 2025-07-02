@@ -17,8 +17,8 @@
 
         "source_train": {
             "batch_size": 8,
-            "epoch": 3,
-            "lr": 8e-6,
+            "epoch": 1,
+            "lr": 5e-5,
             "weight_decay": 5e-2
         },
 

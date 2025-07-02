@@ -93,7 +93,7 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            if i%100 == 0:
+            if i%50 == 0:
                 torch.cuda.empty_cache()
                 logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(source_dataloader), np.average(train_loss)))
 
@@ -147,7 +147,7 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            if i%100 == 0:
+            if i%50 == 0:
                 torch.cuda.empty_cache()
                 logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(target_dataloader), np.average(train_loss)))
 
@@ -175,7 +175,7 @@ def exp_ft(cfg, logger=None):
     truth = np.zeros((len(test_dataset), cfg['pre_num']))
 
     cur = 0
-    for i, batch in enumerate(test_dataloader), total=len(test_dataloader):
+    for i, batch in enumerate(test_dataloader):
         if debug and i==3: break
         with torch.no_grad():
             output = model(batch)
