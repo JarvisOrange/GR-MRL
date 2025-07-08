@@ -1,7 +1,7 @@
 {
  
     "debug": 0,
-    "stage": 4,
+    "stage": 1,
     "exp_tag": "raw",
     "device": "cuda:0",
     "seed": 42,
@@ -12,7 +12,9 @@
                 "epoch": 1000,
                 "lr" : 5e-5,
                 "weight_decay": 1e-2,
-                "train_val_test":[0.7, 0.1, 0.2]
+                "shuffle": false,
+                "train_val_test":[0.8, 0.2],
+                "patience":5
         },
 
         "source_train": {

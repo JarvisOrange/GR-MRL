@@ -18,9 +18,6 @@ sys.path.append('./Model/TSFormer')
 from Data.road_data_provider import *
 
 
-
-
-
 def exp_pretrain(cfg, logger=None):
     debug = cfg['debug']
 
@@ -35,7 +32,7 @@ def exp_pretrain(cfg, logger=None):
     
     provider = RoadDataProvider(cfg, flag='pretrain',logger=logger)
     
-    train_dataloader, val_dataloader, test_dataloader = provider.generate_pretrain_dataloader()
+    train_dataloader, val_dataloader = provider.generate_pretrain_dataloader()
 
     model = TSFormer(cfg['TSFormer']).to(device)
     model.mode = 'pretrain'
@@ -47,6 +44,7 @@ def exp_pretrain(cfg, logger=None):
     logger.info('pretrain model has {} parameters'.format(count_parameters(model)))
     
     best_loss = 9999999999999.0
+    patience = cfg['flag']['pretrain']['patience']
 
     epochs = cfg['flag']['pretrain']['epoch']
 
@@ -89,7 +87,6 @@ def exp_pretrain(cfg, logger=None):
             total_mape.append(MAPE.cpu().detach().numpy())
 
             total_loss.append(loss.item())
-
 
             if debug: break
         
@@ -142,51 +139,54 @@ def exp_pretrain(cfg, logger=None):
             best_loss = mae_loss
             torch.save(model.state_dict(), model_dir  + 'best_model.pt')
             logger.info('Best model Saved at Epoch {}'.format(i))
+        else:
+            patience -= 1
+             
+        if patience < 0: break        
         
+    # #####################################
+    # # test
+    #     for batch in test_dataloader:
+    #         total_loss = []
+    #         total_mae = []
+    #         total_mse = []
+    #         total_rmse = []
+    #         total_mape = []
+    #         model.eval()
+            
+    #         # input : [B, l, 7] -> [B, 7, l]
+    #         x = batch.permute(0, 2, 1).to(device)
+            
+    #         out_masked_tokens, label_masked_tokens = model(x)
+            
+    #         # only the masked patch is loss target 
+    #         loss = loss_fn(out_masked_tokens, label_masked_tokens)
+    #         opt.zero_grad()
+    #         loss.backward()
+    #         opt.step()
+            
+    #         # unmask
+    #         means = torch.unsqueeze(batch[:, 0, 5], dim=1).cuda()
+    #         stds = torch.unsqueeze(batch[:, 0, 6], dim=1).cuda()
+
+    #         unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
+            
+    #         MSE,RMSE,MAE,MAPE = calc_metric_torch(unnorm_out, unnorm_label)
+            
+    #         total_mse.append(MSE.cpu().detach().numpy())
+    #         total_rmse.append(RMSE.cpu().detach().numpy())
+    #         total_mae.append(MAE.cpu().detach().numpy())
+    #         total_mape.append(MAPE.cpu().detach().numpy())
+
+    #         total_loss.append(loss.item())
+
         
-    #####################################
-    # test
-        for batch in test_dataloader:
-            total_loss = []
-            total_mae = []
-            total_mse = []
-            total_rmse = []
-            total_mape = []
-            model.eval()
-            
-            # input : [B, l, 7] -> [B, 7, l]
-            x = batch.permute(0, 2, 1).to(device)
-            
-            out_masked_tokens, label_masked_tokens = model(x)
-            
-            # only the masked patch is loss target 
-            loss = loss_fn(out_masked_tokens, label_masked_tokens)
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-            
-            # unmask
-            means = torch.unsqueeze(batch[:, 0, 5], dim=1).cuda()
-            stds = torch.unsqueeze(batch[:, 0, 6], dim=1).cuda()
+    #         if debug: break
 
-            unnorm_out, unnorm_label = unnorm(out_masked_tokens, means, stds), unnorm(label_masked_tokens,means,stds)
-            
-            MSE,RMSE,MAE,MAPE = calc_metric_torch(unnorm_out, unnorm_label)
-            
-            total_mse.append(MSE.cpu().detach().numpy())
-            total_rmse.append(RMSE.cpu().detach().numpy())
-            total_mae.append(MAE.cpu().detach().numpy())
-            total_mape.append(MAPE.cpu().detach().numpy())
-
-            total_loss.append(loss.item())
-
-        
-            if debug: break
-
-        logger.info('*** Test MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape)))
+    #     logger.info('*** Test MSE : {:.5f}, RMSE : {:.5f}, MAE : {:.5f}, MAPE: {:.5f}.'.format(np.mean(total_mse), np.mean(total_rmse), np.mean(total_mae),np.mean(total_mape)))
         
 
-        logger.info('Epochs {}/{} End   :)'.format(i, epochs))
-        logger.info('This epoch costs {:.5}s'.format(time.time()-time_1))
+    #     logger.info('Epochs {}/{} End   :)'.format(i, epochs))
+    #     logger.info('This epoch costs {:.5}s'.format(time.time()-time_1))
         
-        if debug: exit(0)
+    #     if debug: exit(0)
