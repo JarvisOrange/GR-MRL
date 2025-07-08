@@ -140,6 +140,7 @@ def exp_pretrain(cfg, logger=None):
             torch.save(model.state_dict(), model_dir  + 'best_model.pt')
             logger.info('Best model Saved at Epoch {}'.format(i))
         else:
+            logger.info('Patience from {}->{}'.format(patience, patience-1))
             patience -= 1
              
         if patience < 0: break        
