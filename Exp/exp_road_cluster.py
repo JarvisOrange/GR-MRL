@@ -14,7 +14,6 @@ from Model.TSFormer.TSmodel import *
 
 def exp_road_cluster(cfg, logger=None):
     debug  = cfg['debug']
-
     device = cfg['device']
 
     temp, _ = cfg['dataset_src_trg'].split('_')
@@ -41,23 +40,18 @@ def exp_road_cluster(cfg, logger=None):
 
     for k, dataloader in tqdm(enumerate(dataloader_list), total=len(dataloader_list), desc='Road Cluster'):
         num_embed = dataloader.dataset.get_x_num()
-
         embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
         counter = 0
         for batch in dataloader:
-
-            x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
-            
+            x = batch
             H = model(x)
+            B, N, L, D = H.shape 
+            H = H.reshape(B*N*L ,D)
 
-            B, L, D = H.shape
+            embed_pool[counter : counter + B*N*L,:] = H.detach()
 
-            H = H.reshape(B * L ,D)
-
-            embed_pool[counter : B + counter,:] = H.detach()
-
-            counter = B + counter
+            counter += B*N*L
 
         embed = embed_pool.mean(dim=0)
         road_pattern[k,:] = embed.cpu() 

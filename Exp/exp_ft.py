@@ -7,6 +7,7 @@ sys.path.append(parent_dir)
 import os
 import torch
 from torch import nn, optim
+from torch.optim.lr_scheduler import CosineAnnealingLR  
 from GR_MRL import GR_MRL
 from Data.VectorBase import VectorBase
 from Data.road_data_provider import *
@@ -37,7 +38,6 @@ def collate_fn(batch):
 def exp_ft(cfg, logger=None):
     
     debug  = cfg['debug']
-    
     device = cfg['device']
     temp, dataset_trg = cfg['dataset_src_trg'].split('_')
     dataset_src = ''.join(temp.split('-'))
@@ -61,6 +61,9 @@ def exp_ft(cfg, logger=None):
             trained_parameters.append(p)
 
     opt = optim.AdamW(trained_parameters, lr=lr, weight_decay=wd)
+    
+    # Add learning rate scheduler for source training
+    scheduler = CosineAnnealingLR(opt, T_max=cfg['flag'][flag]['epoch'], eta_min=lr * 0.1)
 
     # time_now = time.time()
     
@@ -91,14 +94,17 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            if i%50 == 0:
+            if i%100 == 0:
                 torch.cuda.empty_cache()
                 logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(source_dataloader), np.average(train_loss)))
 
         
         train_loss = np.average(train_loss)
+        
+        # Step the scheduler at the end of each epoch
+        scheduler.step()
 
-        logger.info("{} Source Train Epoch: {} | Loss: {:.3f}".format(dataset_src, epoch , train_loss))
+        logger.info("{} Source Train Epoch: {} | Loss: {:.3f} | LR: {:.6f}".format(dataset_src, epoch, train_loss, scheduler.get_last_lr()[0]))
 
 
     # target finetune

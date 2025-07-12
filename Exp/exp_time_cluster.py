@@ -12,11 +12,8 @@ from Model.TSFormer.TSmodel import *
 import copy
 
 
-
-
 def exp_time_cluster(cfg, logger=None):
     debug = cfg['debug']
-    
     device = cfg['device']
 
     temp, _ = cfg['dataset_src_trg'].split('_')
@@ -38,7 +35,7 @@ def exp_time_cluster(cfg, logger=None):
         model.mode = 'test'
 
         provider = RoadDataProvider(cfg, flag='time_cluster', logger=logger)
-        dataloader = provider.generate_dataloader()
+        dataloader_list = provider.generate_dataloader()
 
         num_embed = dataloader.dataset.get_x_num()
         dim_embed = cfg['TSFormer']['out_channel']
@@ -46,55 +43,40 @@ def exp_time_cluster(cfg, logger=None):
         time_embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
         counter = 0
-        for batch in tqdm(dataloader, len(dataloader), desc='Time Cluster'):
+        for dataloader in dataloader_list:
+            for batch in tqdm(dataloader, len(dataloader), desc='Time Cluster'):
+                x = batch
+                H = model(x)
+                B, N, L, D = H.shape 
+                H = H.reshape(B*N*L ,D)
 
-            x = batch.permute(0,2,1) # B l_his 7 - > B 7 l_his
+                time_embed_pool[counter:counter+B*N*L, :] = H.detach().cpu()
+
+                counter += B*N*L 
             
-            H = model(x)
+            logger.info("{} emb_pool shape : {}".format(dataset_src, time_embed_pool.shape))
+            time_embed_pool.requires_grad = False
 
-            B, L, D = H.shape # B * L, D
-
-            H = H.reshape(B * L ,D)
-
-            time_embed_pool[counter:counter+B, :] = H.detach().cpu()
-
-            counter += B 
-        
-        logger.info("{} emb_pool shape : {}".format(dataset_src, time_embed_pool.shape))
-
-        time_embed_pool.requires_grad = False
-
-
-        
         ensure_dir(save_dir)
-
         torch.save(time_embed_pool, save_dir + 'embed.pt')
-
         logger.info('Time Embed Saved at {}'.format(save_dir + 'embed.pt'))        
-
 
     else:
         time_embed_pool = torch.load(embed_path).to(device)
         time_embed_pool.requires_grad = False
 
-    
     center_label, center, metirc = kmeans_pytorch(time_embed_pool , cfg['time_cluster_k'], device=device)
     
     #s-score [-1,1], 1 is best
     #ch-score, bigger is better
     #db-score, smaller is better
     ch_score, db_score = metirc
-
     logger.info(f"$$$ Time Pattern Kmeans Metrics: ch-score: {ch_score:.3f}, db-score: {db_score: .3f}")
-
     save_dir = './Save/time_pattern/{}/'.format(dataset_src)
 
     ensure_dir(save_dir)
-
     pattern_path = save_dir + 'pattern_{}.pt'.format(cfg['time_cluster_k'])
-
     cluster_label_path = save_dir + 'pattern_label_{}.pt'.format(cfg['time_cluster_k'])
-
     torch.save(center, pattern_path)
     torch.save(center_label,  cluster_label_path)
 
