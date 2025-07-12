@@ -244,13 +244,21 @@ class LoraModel(torch.nn.Module):
             
             expected_shape = (out_features, in_features)
             if old_module.weight.shape != expected_shape:
-                # Reshape the weight to correct shape
+                # Reshape the weight to correct shape and convert to Parameter
                 old_weight = old_module.weight.reshape(expected_shape)
+                # Convert to Parameter if it's not already
+                if not isinstance(old_weight, torch.nn.Parameter):
+                    old_weight = torch.nn.Parameter(old_weight)
                 new_module.weight = old_weight
                 # Update out_features to match the actual weight shape
                 new_module.out_features = out_features
             else:
-                new_module.weight = old_module.weight
+                # Convert to Parameter if it's not already
+                if not isinstance(old_module.weight, torch.nn.Parameter):
+                    old_weight = torch.nn.Parameter(old_module.weight)
+                    new_module.weight = old_weight
+                else:
+                    new_module.weight = old_module.weight
                 
         if old_module.bias is not None:
             new_module.bias = old_module.bias
