@@ -6,7 +6,6 @@ import json
 
 from GR_MRL import GR_MRL
 from utils import *
-from Exp.exp_pretrain import *
 from Exp.exp_rag import *
 from Exp.exp_road_cluster import *
 from Exp.exp_time_cluster import *
@@ -77,7 +76,7 @@ def main():
         # exp_pretrain(cfg, logger=_logger)
 
         _logger.info('<<<<<---------- cluster ---------->>>>>'.format(stage_dict[stage]))
-        # exp_time_cluster(cfg, logger=_logger)
+        exp_time_cluster(cfg, logger=_logger)
         exp_road_cluster(cfg, logger=_logger)
 
         _logger.info('<<<<<---------- rag ---------->>>>>'.format(stage_dict[stage]))
@@ -90,7 +89,7 @@ def main():
     ########################################################################
 
     # stage 1: pretrain time patch encoder or get pretrain time patch encoder
-    if stage == 1:
+    # if stage == 1:
         # _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
         # exp_pretrain(cfg, logger=_logger)
         # _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
@@ -98,7 +97,7 @@ def main():
     # stage 2: cluster time patch and node embedding
     elif stage == 2:
         _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
-        exp_time_cluster(cfg, logger=_logger)
+        # exp_time_cluster(cfg, logger=_logger)
         exp_road_cluster(cfg, logger=_logger)
         _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
 

@@ -30,7 +30,6 @@ dataset_description = {
 
 
 def generate_related(dataset_src, time_embed_pool, logger):
-
     info_path = './Save/dataset_info/{}/info.json'.format(dataset_src)
 
     with open(info_path, 'r') as f:
@@ -98,17 +97,19 @@ def generate_related(dataset_src, time_embed_pool, logger):
 
 
 def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, dataset_trg=None):
+    embed_path_dir = './Save/time_embed/{}'.format(dataset_src)
+    ensure_dir(embed_path_dir)
     if flag == 'source_train':
-        embed_path = './Save/time_embed/{}/embed_source.pt'.format(dataset_src)
+        embed_path = embed_path_dir+'/embed_source.pt'
     if flag == 'target_train':
-        embed_path = './Save/time_embed/{}/embed_target.pt'.format(dataset_src)
+        embed_path = embed_path_dir+'/embed_target.pt'
     if flag == 'test':
-        embed_path = './Save/time_embed/{}/embed_test.pt'.format(dataset_src)
+        embed_path = embed_path_dir+'/embed_test.pt'
 
     if not os.path.exists(embed_path):
         save_flag = 'True'
         num_embed = dataloader.dataset.get_x_num() * int(cfg['his_num'] /cfg['TSFormer']['patch_size'])
-        dim_embed = cfg['TSFormer']['out_dim']  # 128
+        dim_embed = cfg['TSFormer']['out_channel']  # 128
         embed_pool = torch.zeros([num_embed, dim_embed]).cuda().float()
     else:
         save_flag = 'False'
@@ -130,23 +131,21 @@ def generate_prompt(cfg, flag, dataset_src, dataloader, vectorbase, logger, data
     for index, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
         x, y = batch
 
-        city = int(x[0, 0, 4].detach().cpu().numpy())
-        means = x[0, 0, 5].detach().cpu().numpy()
-        stds = x[0, 0, 6].detach().cpu().numpy()
-        
-        x = x.permute(0, 2, 1) # B l_his 7 - > B 7 l_his
+        city = int(x[0, 0, 4, 0].detach().cpu().numpy())
+        means = x[0, 0, 5, 0].detach().cpu().numpy()
+        stds = x[0, 0, 6, 0].detach().cpu().numpy()
 
         H = model(x) 
         H = H.detach()
 
-        B, L, D = H.shape # B * L, D
+        B, N, L, D = H.shape
 
         if save_flag == 'True':
-            temp_H = H.reshape(B*L, D)
-            embed_pool[cur:cur+B*int(cfg['his_num'] /cfg['TSFormer']['patch_size']), :] = temp_H
+            temp_H = H.reshape(B*N*L, D)
+            embed_pool[cur:cur+B*N*L, :] = temp_H
 
-        # H (B, 12, D) -> (B, 1, D) calculate B[B, 9:12, D] mean
-        H = H[:, -3:, :].mean(dim=1) # B, D
+        # H (B, 1, 12, D) -> (B, 1, D) calculate B[B, 9:12, D] mean
+        H = H[:,:, -3:, :].mean(dim=2) # B, D
         H = H.reshape(B, D)
             
         related_dict = vectorbase.query_related(H,  k)
@@ -218,39 +217,50 @@ def exp_rag(cfg, logger=None):
 
     flag = 'source_train'
     database.update_mode(flag)
-    source_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
-    source_dataloader = source_provider.generate_dataloader('rag')
-    src_prompt = generate_prompt(cfg, flag, dataset_src, source_dataloader, database, logger)
     src_json_path = save_dir + 'src.json'
-    with open(src_json_path, 'w') as f:
-        json.dump(src_prompt , f, indent=4)
+    if not os.path.exists(src_json_path):
+        source_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
+        source_dataloader = source_provider.generate_dataloader('rag')
+        src_prompt = generate_prompt(cfg, flag, dataset_src, source_dataloader, database, logger)
+        with open(src_json_path, 'w') as f:
+            json.dump(src_prompt , f, indent=4)
 
-    logger.info("generate src.json in {}".format(src_json_path))
+        logger.info("generate src.json in {}".format(src_json_path))
+    else:
+        logger.info(" src.json exists")
     #####################################################################
     
     flag = 'target_train'
     database.update_mode(flag)
-    target_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
-    target_dataloader = target_provider.generate_dataloader('rag')
-    trg_prompt = generate_prompt(cfg, flag, dataset_src, target_dataloader, database, logger)
     trg_json_path = save_dir + 'trg.json'.format(dataset_src)
-    with open(trg_json_path, 'w') as f:
-        json.dump(trg_prompt , f, indent=4)
+    if not os.path.exists(trg_json_path):
+        target_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
+        target_dataloader = target_provider.generate_dataloader('rag')
+        
+        trg_prompt = generate_prompt(cfg, flag, dataset_src, target_dataloader, database, logger)
+        
+        with open(trg_json_path, 'w') as f:
+            json.dump(trg_prompt , f, indent=4)
 
-    logger.info("generate trg.json in {}".format(trg_json_path))
+        logger.info("generate trg.json in {}".format(trg_json_path))
+    else:
+        logger.info(" trg.json exists")
     #####################################################################
 
     flag = 'test'
     database.update_mode(flag)
-    test_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
-    test_dataloader = test_provider.generate_dataloader('rag')
-    test_prompt = generate_prompt(cfg, flag, dataset_src, test_dataloader, database, logger)
     test_json_path = save_dir + 'test.json'.format(dataset_src)
-    with open(test_json_path, 'w') as f:
-        json.dump(test_prompt , f, indent=4)
-    
-    logger.info("generate test.json in {}".format(test_json_path))
-
+    if not os.path.exists(test_json_path):
+        test_provider = RoadDataProvider(cfg, flag=flag, logger=logger)
+        test_dataloader = test_provider.generate_dataloader('rag')
+        test_prompt = generate_prompt(cfg, flag, dataset_src, test_dataloader, database, logger)
+        
+        with open(test_json_path, 'w') as f:
+            json.dump(test_prompt , f, indent=4)
+        
+        logger.info("generate test.json in {}".format(test_json_path))
+    else:
+         logger.info(" test.json exists")
     
         
 

@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import gc
-from TSFormer.Transformer_layers import TransformerLayers
-from TSFormer.mask import MaskGenerator
-from TSFormer.patch import Patch
-from TSFormer.positional_encoding import PositionalEncoding
+from .Transformer_layers import TransformerLayers
+from .mask import MaskGenerator
+from .patch import Patch
+from .positional_encoding import PositionalEncoding
 
 def unshuffle(shuffled_tokens):
     dic = {}
@@ -20,14 +20,14 @@ class TSFormer(nn.Module):
     def __init__(self, model_cfg, mode='Pretrain'):
         super().__init__()
         # patch_size, in_channel, out_channel, dropout, mask_size, mask_ratio, L, spectral = model_cfg['patch_size'], model_cfg['in_channel'], model_cfg['out_channel'], model_cfg['dropout'], model_cfg['mask_size'], model_cfg['mask_ratio'], model_cfg['L'], model_cfg['spectral']
-        patch_size, in_channel, out_channel, dropout, mask_size, mask_ratio, L = model_cfg['patch_size'], model_cfg['in_channel'], model_cfg['out_channel'], model_cfg['dropout'], model_cfg['mask_size'], model_cfg['mask_ratio'], model_cfg['L']
+        patch_size, in_channel, out_channel, dropout, mask_size, mask_ratio, n_layer = model_cfg['patch_size'], model_cfg['in_channel'], model_cfg['out_channel'], model_cfg['dropout'], model_cfg['mask_size'], model_cfg['mask_ratio'], model_cfg['n_layer']
         self.patch_size = patch_size
         self.seleted_feature = 0
         self.mode = mode
         self.patch = Patch(patch_size, in_channel, out_channel, spectral=False)
         self.pe = PositionalEncoding(out_channel, dropout=dropout)
         self.mask  = MaskGenerator(mask_size, mask_ratio)
-        self.encoder = TransformerLayers(out_channel, L)
+        self.encoder = TransformerLayers(out_channel, n_layer)
         self.decoder = TransformerLayers(out_channel, 1)
         self.encoder_2_decoder = nn.Linear(out_channel, out_channel)
         self.mask_token = nn.Parameter(torch.zeros(1, 1, 1, out_channel))

@@ -114,6 +114,7 @@ def exp_ft(cfg, logger=None):
     model.eval()
 
     bs = cfg['flag'][flag]['batch_size']
+    if debug: bs=1
     lr = cfg['flag'][flag]['lr']
     wd = cfg['flag'][flag]['weight_decay']
 
@@ -151,7 +152,7 @@ def exp_ft(cfg, logger=None):
 
             train_loss.append(loss.item())
 
-            if i%50 == 0:
+            if i%100 == 0:
                 torch.cuda.empty_cache()
                 logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(target_dataloader), np.average(train_loss)))
 

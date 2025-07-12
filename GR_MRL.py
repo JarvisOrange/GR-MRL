@@ -106,7 +106,7 @@ class GR_MRL(nn.Module):
                 'Save/road_pattern/{}/pattern_{}.pt'.format(self.dataset_src, cfg['road_cluster_k'])
                                
             kwargs = {
-                  "gate_embed_dim": cfg['TSFormer']['out_dim'],
+                  "gate_embed_dim": cfg['TSFormer']['out_channel'],
                   'gate_embed_path': gate_embed_path,
                   "expert_t_num": cfg['time_cluster_k'],
                   "expert_r_num": cfg['road_cluster_k'],

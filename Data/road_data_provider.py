@@ -198,6 +198,8 @@ class RoadDataProvider():
                         index = i - R_num_list[0] - R_num_list[1]
                         temp_x += [self.X_road_cluster_2[:, index, :, :]]
                 temp_x = np.vstack(temp_x) # [S1+S2+S3, 1, 2, l_his]
+                S, l_fea, l_his = temp_x.shape
+                temp_x = temp_x.reshape(-1, 1 , l_fea, l_his)
                 self.X_road_cluster_dict[k] = temp_x    
             
 
@@ -253,14 +255,14 @@ class RoadDataProvider():
                 X_num += temp
                 X_num_dict[dataset.name] = temp
                 
-            self.X = np.zeros([X_num, his_num, 7], dtype=float)
+            self.X = np.zeros([X_num, 1, 7, his_num], dtype=float)
             self.Y = np.zeros([X_num, pre_num], dtype=float)
 
             cur = 0
             for dataset in self.data_list:
                 x, y = dataset.get_data()
                 
-                self.X[cur:cur + X_num_dict[dataset.name], :, :] = x
+                self.X[cur:cur + X_num_dict[dataset.name], :, :, :] = x
                 self.Y[cur:cur + X_num_dict[dataset.name], :] = y
 
                 cur += dataset.get_x_num()

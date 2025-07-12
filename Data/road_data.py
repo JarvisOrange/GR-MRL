@@ -147,7 +147,7 @@ class RoadData():
             # x : [S * N, 1, 7, l_his]
             # y : [S * N, l_pre] 
 
-            self.x = self.x.reshape(-1, 1, self.his_num, 7)
+            self.x = self.x.reshape(-1, 1, 7, self.his_num)
             self.y = self.y.reshape(-1, self.pre_num)
 
             self._logger.info('{}_{} : x shape : {}, y shape : {}'.format(dataset_name, self.flag, self.x.shape, self.y.shape))

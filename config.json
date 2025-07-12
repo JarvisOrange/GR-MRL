@@ -1,7 +1,7 @@
 {
  
-    "debug": 0,
-    "stage": 1,
+    "debug": 1,
+    "stage": 4,
     "exp_tag": "raw",
     "device": "cuda:0",
     "seed": 42,
@@ -38,11 +38,11 @@
         },
 
         "time_cluster":{
-            "batch_size": 2048
+            "batch_size": 8192
         },
 
         "road_cluster":{
-            "batch_size": 2048
+            "batch_size": 8192
         },
 
         "rag":{
