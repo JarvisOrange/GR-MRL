@@ -1,12 +1,12 @@
 {
  
-    "debug": 1,
-    "stage": 4,
+    "debug": 0,
+    "stage": 1,
     "exp_tag": "raw",
     "device": "cuda:0",
     "seed": 42,
 
-    "dataset_src_trg": "B-L-C_S",
+    "dataset_src_trg": "B-L-S_C",
 
     "flag":  {
         "pretrain": {

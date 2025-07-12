@@ -72,8 +72,6 @@ def main():
 
     # stage 0: all process
     if stage == 0:
-        # _logger.info('<<<<<---------- pretrain ---------->>>>>'.format(stage_dict[stage]))
-        # exp_pretrain(cfg, logger=_logger)
 
         _logger.info('<<<<<---------- cluster ---------->>>>>'.format(stage_dict[stage]))
         exp_time_cluster(cfg, logger=_logger)
@@ -88,11 +86,14 @@ def main():
 
     ########################################################################
 
-    # stage 1: pretrain time patch encoder or get pretrain time patch encoder
-    # if stage == 1:
-        # _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
-        # exp_pretrain(cfg, logger=_logger)
-        # _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
+    if stage == 1:
+        _logger.info('<<<<<---------- cluster ---------->>>>>'.format(stage_dict[stage]))
+        exp_time_cluster(cfg, logger=_logger)
+        exp_road_cluster(cfg, logger=_logger)
+
+        _logger.info('<<<<<---------- rag ---------->>>>>'.format(stage_dict[stage]))
+        exp_rag(cfg,logger=_logger)
+
 
     # stage 2: cluster time patch and node embedding
     elif stage == 2:
