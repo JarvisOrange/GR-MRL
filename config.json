@@ -6,11 +6,13 @@
     "device": "cuda:0",
     "seed": 42,
 
+    "dataset_src_trg": "B-L-C_S",
+
     "flag":  {
         "pretrain": {
-                "batch_size": 1024, 
+                "batch_size": 256, 
                 "epoch": 1000,
-                "lr" : 5e-5,
+                "lr" : 5e-6,
                 "weight_decay": 1e-2,
                 "shuffle": false,
                 "train_val_test":[0.8, 0.2],
@@ -91,8 +93,6 @@
         }
     },
 
-    
-    "dataset_src_trg": "B-L-C_S",
 
     "laplacian_dim": 64,
 
@@ -111,9 +111,9 @@
 
     "TSFormer": {
         "patch_size":12,
-        "in_dim":1,
+        "in_channel":1,
 
-        "out_dim":128,
+        "out_channel":128,
 
         "dropout":0.1,
         "window_size": 288,

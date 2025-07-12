@@ -62,8 +62,8 @@ def exp_pretrain(cfg, logger=None):
             total_mape = []
             model.train()
            
-            # input : [B, l, 7] -> [B, 7, l]
-            x = batch.permute(0, 2, 1).to(device)
+            # input： [B, N, 7, l]
+            x = batch.to(device)
             
             out_masked_tokens, label_masked_tokens = model(x)
             
@@ -136,6 +136,7 @@ def exp_pretrain(cfg, logger=None):
         
         mae_loss = np.mean(total_mae)
         if(mae_loss < best_loss):
+            patience = cfg['flag']['pretrain']['patience']
             best_loss = mae_loss
             torch.save(model.state_dict(), model_dir  + 'best_model.pt')
             logger.info('Best model Saved at Epoch {}'.format(i))

@@ -37,13 +37,11 @@ def exp_time_cluster(cfg, logger=None):
         model.load_state_dict(torch.load(model_path))
         model.mode = 'test'
 
-
         provider = RoadDataProvider(cfg, flag='time_cluster', logger=logger)
         dataloader = provider.generate_dataloader()
 
-
         num_embed = dataloader.dataset.get_x_num()
-        dim_embed = cfg['TSFormer']['out_dim']
+        dim_embed = cfg['TSFormer']['out_channel']
 
         time_embed_pool = torch.zeros([num_embed, dim_embed]).float()
 

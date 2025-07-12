@@ -36,11 +36,9 @@ stage_dict = {
 
 def set_cfg():
     parser = ArgumentParser()
-    parser.add_argument("--exp_tag", type=str)
     parser.add_argument("--dataset_src_trg", type=str)
     parser.add_argument("--device", type=str)
     args = parser.parse_args()
-
 
     with open('./config.json', 'r', encoding='utf-8') as file:
         cfg = json.load(file)
@@ -75,8 +73,8 @@ def main():
 
     # stage 0: all process
     if stage == 0:
-        _logger.info('<<<<<---------- pretrain ---------->>>>>'.format(stage_dict[stage]))
-        exp_pretrain(cfg, logger=_logger)
+        # _logger.info('<<<<<---------- pretrain ---------->>>>>'.format(stage_dict[stage]))
+        # exp_pretrain(cfg, logger=_logger)
 
         _logger.info('<<<<<---------- cluster ---------->>>>>'.format(stage_dict[stage]))
         # exp_time_cluster(cfg, logger=_logger)
@@ -93,9 +91,9 @@ def main():
 
     # stage 1: pretrain time patch encoder or get pretrain time patch encoder
     if stage == 1:
-        _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
-        exp_pretrain(cfg, logger=_logger)
-        _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
+        # _logger.info('<<<<<---------- {} Start---------->>>>>'.format(stage_dict[stage]))
+        # exp_pretrain(cfg, logger=_logger)
+        # _logger.info('<<<<<---------- {} End---------->>>>>'.format(stage_dict[stage]))
 
     # stage 2: cluster time patch and node embedding
     elif stage == 2:

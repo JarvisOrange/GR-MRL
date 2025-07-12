@@ -26,7 +26,6 @@ class PromptDataset(Dataset):
              self.prompt = json.load(f)
 
         
-    
     def __len__(self):
         return len(self.prompt)
     

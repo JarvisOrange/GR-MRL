@@ -74,6 +74,16 @@ class RoadData():
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
 
+        if flag == 'road_cluster':
+            X = X
+
+            self.his_num = 12
+            self.pre_num = 0
+
+            self.interval = 12
+
+            self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
+
         if flag == 'rag':
             X = X
 
@@ -84,16 +94,6 @@ class RoadData():
 
             self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
             
-
-        if flag == 'road_cluster':
-            X = X
-
-            self.his_num = 12
-            self.pre_num = 0
-
-            self.interval = 12
-
-            self.x, self.y = self.generate_data(X, self.his_num, self.pre_num, self.interval)
             
         if flag == 'source_train':
 
@@ -130,40 +130,33 @@ class RoadData():
             self._logger.warning("y is None, return x only")
             
         ################################################################################
-        # origin self.x: [S, N, l_his， 7]
-        if self.flag == 'pretrain':
-            # x : [S * N, l_his， 7]
+        # origin self.x: [S, N, 7, l_his]
+        # if self.flag == 'pretrain':
+        #     # x : [S, N, 7, l_his]
+        #     self._logger.info('{}_pretrain : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
-            self.x = self.x.reshape(-1, self.his_num, 7)
-
-            self._logger.info('{}_pretrain : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
-
-        
         if self.flag == 'time_cluster':
-            # x : [S * N, l_his， 7]
-            self.x = self.x.reshape(-1, self.his_num, 7)
-
+            # x : [S,  N, 2, l_his]
+            self.x = self.xarr[:, :, :2, :]
             self._logger.info('{}_time_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
             
         if self.flag == 'road_cluster':
-            # x : [N, S, l_his， 7]
-            N, S, L, D = self.x.shape
-            self.x = np.transpose(self.x, (1, 0, 2, 3)) #[N, S, l_his， 7]
-    
+            # x : [S, N, 7, l_his]
             self._logger.info('{}_road_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
 
         if self.flag == 'rag':
-            # x : [S * N, l_his， 7]
-            self.x = self.x.reshape(-1, self.his_num, 7)
-
+            # x : [S, N, 7, l_his]
             self._logger.info('{}_rag : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
             
             
 
         if self.flag == 'source_train' or self.flag == 'target_train' or self.flag == 'test':
-            # x : [S * N, l_his， 7]
+            # x : [S * N, 1, l_his， 7]
             # y : [S * N, l_pre] 
-            self.x = self.x.reshape(-1, self.his_num, 7)
+
+            #tobefix
+            self.x = self.x.reshape(-1, 1, self.his_num, 7)
+            
             self.y = self.y.reshape(-1, self.pre_num)
 
             self._logger.info('{}_{} : x shape : {}, y shape : {}'.format(dataset_name, self.flag, self.x.shape, self.y.shape))
@@ -179,8 +172,8 @@ class RoadData():
         features, target = [], []
         for i, j in indices:
             temp = X[:, :, i: i + num_timesteps_input]
-            # [N, 7, L] -> [N, L, 7]
-            features.append( np.transpose(temp, (0, 2, 1)) )
+            # [N, 7, L]
+            features.append(temp)
 
             #target unnorm
             target.append(X[:, 0, i + num_timesteps_input: j] * self.std + self.mean)
@@ -204,30 +197,26 @@ class RoadData():
             self._logger.warning("y is None, return x only")
             
 
-        if self.flag == 'pretrain':
-            # x : [S * N, l_his， 7]
+        # if self.flag == 'pretrain':
+        #     # x : [S * N, l_his， 7]
 
-            return self.x
+        #     return self.x
         
         if self.flag == 'time_cluster':
-            # x : [S * N, l_his， 7]
-            
+            # x : [S, N, l_his， 7]
             return self.x
-        
+
         if self.flag == 'road_cluster':
             # x : [N, S*l_his， 7]
-
             return self.x
         
         if self.flag == 'rag':
             # x : [S * N, l_his， 7]
-            
             return self.x
         
         if self.flag == 'source_train' or self.flag == 'target_train' or self.flag == 'test':
             # x : [S * N, l_his， 7]
             # y : [S * N, l_pre] 
-
             return self.x, self.y
     
 

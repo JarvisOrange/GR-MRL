@@ -39,9 +39,7 @@ def exp_ft(cfg, logger=None):
     debug  = cfg['debug']
     
     device = cfg['device']
-
     temp, dataset_trg = cfg['dataset_src_trg'].split('_')
-    
     dataset_src = ''.join(temp.split('-'))
 
     flag = 'source_train'
