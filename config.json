@@ -148,5 +148,5 @@
     "dropout": 0.2,
     "batch_size": 32,
     
-    "use_quantization": true
+    "use_quantization": false
 }

@@ -231,7 +231,17 @@ class LoraModel(torch.nn.Module):
     def _replace_module(self, parent_module, child_name, new_module, old_module):
         """substitute the original nn.Linear to new Linear (nn.Linear+LoRA block)"""
         setattr(parent_module, child_name, new_module)
-        new_module.weight = old_module.weight
+        
+        # Ensure weight has correct shape for quantized models
+        if hasattr(old_module, 'weight') and old_module.weight is not None:
+            expected_shape = (new_module.out_features, new_module.in_features)
+            if old_module.weight.shape != expected_shape:
+                # Reshape the weight to correct shape
+                old_weight = old_module.weight.reshape(expected_shape)
+                new_module.weight = old_weight
+            else:
+                new_module.weight = old_module.weight
+                
         if old_module.bias is not None:
             new_module.bias = old_module.bias
         if getattr(old_module, "state", None) is not None:  # synchronize the state and device
