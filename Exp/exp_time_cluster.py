@@ -35,7 +35,7 @@ def exp_time_cluster(cfg, logger=None):
         model.mode = 'test'
 
         provider = RoadDataProvider(cfg, flag='time_cluster', logger=logger)
-        dataloader_list = provider.generate_dataloader()
+        dataloader_list = provider.generate_time_cluster_dataloader()
 
         num_embed = dataloader.dataset.get_x_num()
         dim_embed = cfg['TSFormer']['out_channel']
