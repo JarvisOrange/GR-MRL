@@ -215,16 +215,14 @@ class GR_MRL(nn.Module):
                     patch_e = self.time_embed[j]
                     mapped_patch = self.mapping_layer(patch_e)
                     # Ensure mapped patch matches the embedding dtype
-                    if hasattr(self.llm, 'dtype'):
-                        mapped_patch = mapped_patch.to(self.llm.dtype)
+                    mapped_patch = mapped_patch.to(combined_embeds.dtype)
                     combined_embeds[i, j, :] = mapped_patch
 
             attention_mask = torch.tensor(tokenized['attention_mask']).cuda()
             
-            # Ensure tensors match the model's dtype for quantized models
-            if hasattr(self.llm, 'dtype'):
-                combined_embeds = combined_embeds.to(self.llm.dtype)
-                attention_mask = attention_mask.to(self.llm.dtype)
+            # Ensure tensors match the embedding dtype for quantized models
+            combined_embeds = combined_embeds.to(combined_embeds.dtype)
+            attention_mask = attention_mask.to(combined_embeds.dtype)
             
             
             self.outputs = self.peft_model(

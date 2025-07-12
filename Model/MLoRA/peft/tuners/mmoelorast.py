@@ -432,9 +432,12 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
-            # Ensure x matches the LoRA weight dtype
-            if self.active_adapter in self.lora_A_t.keys():
+            # Ensure x matches the LoRA weight dtype for all LoRA operations
+            if self.active_adapter in self.lora_A_t.keys() and len(self.lora_A_t[self.active_adapter].loraA) > 0:
                 x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
+            else:
+                # Fallback: ensure x matches the base weight dtype
+                x = x.to(self.weight.dtype)
 
             #Shared
             result += (
@@ -497,7 +500,13 @@ class MMOELinearA(nn.Module):
         '''input x is a vector, return output is a list'''
         outputs = []
         for i in range(self.expert_num):
-            outputs.append(self.loraA[i](x))
+            # Ensure input matches the expert's weight dtype
+            try:
+                x_i = x.to(self.loraA[i].weight.dtype)
+            except AttributeError:
+                # Fallback: use float32 if weight dtype is not available
+                x_i = x.to(torch.float32)
+            outputs.append(self.loraA[i](x_i))
 
         return outputs
 
@@ -519,7 +528,13 @@ class MMOELinearB(nn.Module):
         '''input x is a list, return output is also a list'''
         outputs = []
         for i in range(self.expert_num):
-            outputs.append(self.loraB[i](x[i]))
+            # Ensure input matches the expert's weight dtype
+            try:
+                x_i = x[i].to(self.loraB[i].weight.dtype)
+            except AttributeError:
+                # Fallback: use float32 if weight dtype is not available
+                x_i = x[i].to(torch.float32)
+            outputs.append(self.loraB[i](x_i))
 
         return outputs
 
@@ -532,7 +547,11 @@ class Expert(nn.Module):
     
     def forward(self, x):
         # Ensure input matches weight dtype
-        x = x.to(self.mlp.weight.dtype)
+        try:
+            x = x.to(self.mlp.weight.dtype)
+        except AttributeError:
+            # Fallback: use float32 if weight dtype is not available
+            x = x.to(torch.float32)
         return self.mlp(x)
 
 class Gate(nn.Module):
@@ -551,7 +570,11 @@ class Gate(nn.Module):
     
     def forward(self, x):
         # Ensure input matches weight dtype
-        x = x.to(self.projection.weight.dtype)
+        try:
+            x = x.to(self.projection.weight.dtype)
+        except AttributeError:
+            # Fallback: use float32 if weight dtype is not available
+            x = x.to(torch.float32)
 
         x_pooled = torch.mean(x, dim=1)  # (batch_size, hidden_dim)
         
