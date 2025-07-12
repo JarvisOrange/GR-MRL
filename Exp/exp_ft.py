@@ -16,7 +16,14 @@ from Data.VectorBase import *
 from utils import My_Loss
 from tqdm import tqdm
 import time
+import psutil
 
+
+def get_memory_usage():
+    """Get current memory usage in GB"""
+    process = psutil.Process()
+    memory_info = process.memory_info()
+    return memory_info.rss / 1024 / 1024 / 1024  # Convert to GB
 
 def collate_fn(batch):
     def pad_sequences_2d(sequences, padding_idx=-1):
@@ -64,6 +71,9 @@ def exp_ft(cfg, logger=None):
     
     # Add learning rate scheduler for source training
     scheduler = CosineAnnealingLR(opt, T_max=cfg['flag'][flag]['epoch'], eta_min=lr * 0.1)
+    
+    # Enable mixed precision training for memory efficiency
+    scaler = torch.cuda.amp.GradScaler()
 
     # time_now = time.time()
     
@@ -82,21 +92,27 @@ def exp_ft(cfg, logger=None):
         train_loss = []
         for i, batch in enumerate(source_dataloader):
             if debug and i == 10: break
-            output = model(batch)
-            output = output.float()
-            label = [item['label'] for item in batch]
-            label = torch.stack(label, dim=0).float().cuda()
+            with torch.cuda.amp.autocast():
+                output = model(batch)
+                output = output.float()
+                label = [item['label'] for item in batch]
+                label = torch.stack(label, dim=0).float().cuda()
 
-            loss = criterion(output, label)
-            loss.backward()
+                loss = criterion(output, label)
+            
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
 
             train_loss.append(loss.item())
 
             if i%100 == 0:
                 torch.cuda.empty_cache()
-                logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(source_dataloader), np.average(train_loss)))
+                memory_usage = get_memory_usage()
+                logger.info("Source Train Epoch: {} {}/{} | Loss: {:.3f} | Memory: {:.2f}GB".format(
+                    epoch, i, len(source_dataloader), np.average(train_loss), memory_usage))
 
         
         train_loss = np.average(train_loss)
@@ -124,6 +140,9 @@ def exp_ft(cfg, logger=None):
             trained_parameters.append(p)
 
     opt = optim.AdamW(trained_parameters, lr=lr, weight_decay=wd)
+    
+    # Enable mixed precision training for target training
+    scaler = torch.cuda.amp.GradScaler()
 
     target_dataset = PromptDataset(cfg, dataset_src, 'trg')
     target_dataloader = DataLoader(target_dataset, 
@@ -140,21 +159,27 @@ def exp_ft(cfg, logger=None):
         for i, batch in enumerate(target_dataloader):
             if debug and i == 10: break
 
-            output = model(batch)
-            output = output.float()
-            label = [item['label'] for item in batch]
-            label = torch.stack(label, dim=0).cuda()
+            with torch.cuda.amp.autocast():
+                output = model(batch)
+                output = output.float()
+                label = [item['label'] for item in batch]
+                label = torch.stack(label, dim=0).cuda()
 
-            loss = criterion(output, label)
-            loss.backward()
+                loss = criterion(output, label)
+            
+            scaler.scale(loss).backward()
+            scaler.unscale_(opt)
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            opt.step()
+            scaler.step(opt)
+            scaler.update()
 
             train_loss.append(loss.item())
 
             if i%100 == 0:
                 torch.cuda.empty_cache()
-                logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f}".format(epoch, i, len(target_dataloader), np.average(train_loss)))
+                memory_usage = get_memory_usage()
+                logger.info("Target Train Epoch: {} {}/{} | Loss: {:.3f} | Memory: {:.2f}GB".format(
+                    epoch, i, len(target_dataloader), np.average(train_loss), memory_usage))
 
         train_loss = np.average(train_loss)
 

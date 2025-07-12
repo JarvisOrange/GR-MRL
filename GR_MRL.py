@@ -85,13 +85,32 @@ class GR_MRL(nn.Module):
         special_token = {'additional_special_tokens': ['[PATCH]']}
         self.tokenizer.add_special_tokens(special_token)
 
-        self.llm = AutoModelForCausalLM.from_pretrained(
-            self.LLM_path,
-            torch_dtype=torch.bfloat16,
-            device_map='auto',
-            use_cache=False,
-            trust_remote_code=True
-        )
+        # Add quantization configuration (optional)
+        use_quantization = cfg.get('use_quantization', False)
+        
+        if use_quantization:
+            quantization_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4"
+            )
+            self.llm = AutoModelForCausalLM.from_pretrained(
+                self.LLM_path,
+                torch_dtype=torch.bfloat16,
+                device_map='auto',
+                use_cache=False,
+                trust_remote_code=True,
+                quantization_config=quantization_config
+            )
+        else:
+            self.llm = AutoModelForCausalLM.from_pretrained(
+                self.LLM_path,
+                torch_dtype=torch.bfloat16,
+                device_map='auto',
+                use_cache=False,
+                trust_remote_code=True
+            )
 
         self.llm.resize_token_embeddings(len(self.tokenizer))
         self.llm.gradient_checkpointing_enable()
@@ -126,6 +145,9 @@ class GR_MRL(nn.Module):
             modules_to_save=modules_to_save,
             **kwargs
         )
+        
+        # Enable gradient checkpointing for memory efficiency
+        self.llm.gradient_checkpointing_enable()
 
         self.peft_model = get_peft_model(self.llm, peft_config)
 

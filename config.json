@@ -146,5 +146,7 @@
     "patience": 5,
     "lr": 1e-5,
     "dropout": 0.2,
-    "batch_size": 32
+    "batch_size": 32,
+    
+    "use_quantization": true
 }
