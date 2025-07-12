@@ -213,9 +213,18 @@ class GR_MRL(nn.Module):
                     # j is [PATCH] position
                     assert input_ids[i][j] == special_token_id , ' mismatch'
                     patch_e = self.time_embed[j]
-                    combined_embeds[i, j, :] = self.mapping_layer(patch_e)
+                    mapped_patch = self.mapping_layer(patch_e)
+                    # Ensure mapped patch matches the embedding dtype
+                    if hasattr(self.llm, 'dtype'):
+                        mapped_patch = mapped_patch.to(self.llm.dtype)
+                    combined_embeds[i, j, :] = mapped_patch
 
             attention_mask = torch.tensor(tokenized['attention_mask']).cuda()
+            
+            # Ensure tensors match the model's dtype for quantized models
+            if hasattr(self.llm, 'dtype'):
+                combined_embeds = combined_embeds.to(self.llm.dtype)
+                attention_mask = attention_mask.to(self.llm.dtype)
             
             
             self.outputs = self.peft_model(
@@ -228,6 +237,8 @@ class GR_MRL(nn.Module):
             last_hidden_state = self.outputs.hidden_states[-1]
             logits = (last_hidden_state * attention_mask.unsqueeze(-1)).sum(1) / attention_mask.sum(-1, keepdim=True)
             output = self.output_layer(logits)
+            # Ensure output is float32 for compatibility
+            output = output.float()
             return output
 
         

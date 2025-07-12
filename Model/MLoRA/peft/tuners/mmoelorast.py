@@ -229,6 +229,7 @@ class MMOELoraSTLayer(LoraLayer):
         if init_lora_weights:
             self.reset_lora_parameters(adapter_name)
             
+        # Ensure LoRA modules are on the same device as the base weight
         self.to(self.weight.device)
     
     def reset_lora_parameters(self, adapter_name):
@@ -415,7 +416,8 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
     def forward(self, x: torch.Tensor, **kwargs):
         previous_dtype = x.dtype
-
+        x = x.to(self.weight.dtype)  # 保证输入和权重类型一致
+        
         if self.active_adapter not in self.lora_A_t.keys():   # No adapter, directly use linear
             return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
         
@@ -426,7 +428,9 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
         elif self.r[self.active_adapter] > 0 and not self.merged:   # general lora process
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
-            x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
+            # Ensure x matches the LoRA weight dtype
+            if self.active_adapter in self.lora_A_t.keys():
+                x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
 
             #Shared
             result += (
