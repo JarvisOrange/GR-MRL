@@ -424,9 +424,13 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
         if self.disable_adapters:   # No adapter
             if self.r[self.active_adapter] > 0 and self.merged: # merge the adapter to linear
                 self.unmerge(x)
+            # Ensure x matches weight dtype
+            x = x.to(self.weight.dtype)
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
         elif self.r[self.active_adapter] > 0 and not self.merged:   # general lora process
+            # Ensure x matches weight dtype
+            x = x.to(self.weight.dtype)
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
             # Ensure x matches the LoRA weight dtype
             if self.active_adapter in self.lora_A_t.keys():
@@ -466,6 +470,8 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                     * expert_weight_r[..., i].unsqueeze(1).unsqueeze(2) # I think .view(-1, 1, 1) is better for understanding
                  )
         else:
+            # Ensure x matches weight dtype
+            x = x.to(self.weight.dtype)
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
         result = result.to(previous_dtype)
@@ -525,6 +531,8 @@ class Expert(nn.Module):
         self.weight = self.mlp.weight
     
     def forward(self, x):
+        # Ensure input matches weight dtype
+        x = x.to(self.mlp.weight.dtype)
         return self.mlp(x)
 
 class Gate(nn.Module):
@@ -542,6 +550,8 @@ class Gate(nn.Module):
         self.w_noise = nn.Linear(input_size, expert_num, bias=False)
     
     def forward(self, x):
+        # Ensure input matches weight dtype
+        x = x.to(self.projection.weight.dtype)
 
         x_pooled = torch.mean(x, dim=1)  # (batch_size, hidden_dim)
         
@@ -624,6 +634,9 @@ class Linear(nn.Linear, LoraLayer):
 
     def forward(self, x: torch.Tensor, **kwargs):
         previous_dtype = x.dtype
+        
+        # Ensure input tensor matches weight dtype for quantized models
+        x = x.to(self.weight.dtype)
 
         if self.active_adapter not in self.lora_A.keys():
             return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
