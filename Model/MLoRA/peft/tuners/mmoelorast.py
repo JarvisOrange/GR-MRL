@@ -450,26 +450,28 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
         if self.weight.dtype not in (torch.float32, torch.float16, torch.bfloat16):
             # 对于量化模型，我们只转换输入，不修改权重
             x = x.to(torch.float32)
-        if self.bias is not None and self.bias.dtype != self.weight.dtype:
-            self.bias = self.bias.to(self.weight.dtype)
+        # 不要直接修改 bias 参数，而是在使用时转换
+        bias = None
+        if self.bias is not None:
+            try:
+                bias = self.bias.to(self.weight.dtype)
+            except (AttributeError, RuntimeError):
+                # Fallback: use float32 if conversion fails
+                bias = self.bias.to(torch.float32)
         
         if self.active_adapter not in self.lora_A_t.keys():   # No adapter, directly use linear
-            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
         
         if self.disable_adapters:   # No adapter
             if self.r[self.active_adapter] > 0 and self.merged: # merge the adapter to linear
                 self.unmerge(x)
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
-            # Ensure bias matches weight dtype
-            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
 
         elif self.r[self.active_adapter] > 0 and not self.merged:   # general lora process
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
-            # Ensure bias matches weight dtype
-            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
             # Ensure x matches the LoRA weight dtype for all LoRA operations
             if self.active_adapter in self.lora_A_t.keys() and len(self.lora_A_t[self.active_adapter].loraA) > 0:
@@ -514,8 +516,6 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
         else:
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
-            # Ensure bias matches weight dtype
-            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
             result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
 
         result = result.to(x.dtype) # 确保输出类型与输入一致
