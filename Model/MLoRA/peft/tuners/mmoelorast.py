@@ -415,8 +415,13 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
 
 
     def forward(self, x: torch.Tensor, **kwargs):
-        previous_dtype = x.dtype
-        x = x.to(self.weight.dtype)  # 保证输入和权重类型一致
+        # 推荐统一为 float32 或 float16
+        if x.dtype not in (torch.float32, torch.float16, torch.bfloat16):
+            x = x.float()
+        if self.weight.dtype not in (torch.float32, torch.float16, torch.bfloat16):
+            self.weight = self.weight.float()
+        if self.bias is not None and self.bias.dtype != self.weight.dtype:
+            self.bias = self.bias.to(self.weight.dtype)
         
         if self.active_adapter not in self.lora_A_t.keys():   # No adapter, directly use linear
             return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
@@ -426,12 +431,16 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                 self.unmerge(x)
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            # Ensure bias matches weight dtype
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
 
         elif self.r[self.active_adapter] > 0 and not self.merged:   # general lora process
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            # Ensure bias matches weight dtype
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
             # Ensure x matches the LoRA weight dtype for all LoRA operations
             if self.active_adapter in self.lora_A_t.keys() and len(self.lora_A_t[self.active_adapter].loraA) > 0:
                 x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
@@ -475,9 +484,11 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
         else:
             # Ensure x matches weight dtype
             x = x.to(self.weight.dtype)
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            # Ensure bias matches weight dtype
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
 
-        result = result.to(previous_dtype)
+        result = result.to(x.dtype) # 确保输出类型与输入一致
         return result
     
 class MMOELinearA(nn.Module):
@@ -658,17 +669,26 @@ class Linear(nn.Linear, LoraLayer):
     def forward(self, x: torch.Tensor, **kwargs):
         previous_dtype = x.dtype
         
-        # Ensure input tensor matches weight dtype for quantized models
+        # Ensure input tensor and bias match weight dtype for quantized models
         x = x.to(self.weight.dtype)
+        if self.bias is not None:
+            try:
+                self.bias = self.bias.to(self.weight.dtype)
+            except (AttributeError, RuntimeError):
+                # Fallback: use float32 if conversion fails
+                self.bias = self.bias.to(torch.float32)
 
         if self.active_adapter not in self.lora_A.keys():
-            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
         if self.disable_adapters:
             if self.r[self.active_adapter] > 0 and self.merged:
                 self.unmerge()
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
         elif self.r[self.active_adapter] > 0 and not self.merged:
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
 
             x = x.to(self.lora_A[self.active_adapter].weight.dtype)
 
@@ -679,7 +699,8 @@ class Linear(nn.Linear, LoraLayer):
                 * self.scaling[self.active_adapter]
             )
         else:
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            bias = self.bias.to(self.weight.dtype) if self.bias is not None else None
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
 
         result = result.to(previous_dtype)
 
