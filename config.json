@@ -131,9 +131,9 @@
 
     "lora_method": "stmoelora",
 
-    "lora_rank": 32,
+    "lora_rank": 8,
     "lora_dropout": 0.1,
-    "lora_alpha": 32,
+    "lora_alpha": 16,
 
     "target_modules": ["query_key_value"],
     "modules_to_save": ["embed_tokens", "lm_head", "mapping_layer", "output_layer"],
@@ -148,5 +148,5 @@
     "dropout": 0.2,
     "batch_size": 32,
     
-    "use_quantization": true
+    "use_quantization": false
 }

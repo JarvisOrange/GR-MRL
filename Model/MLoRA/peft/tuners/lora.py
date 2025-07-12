@@ -231,41 +231,7 @@ class LoraModel(torch.nn.Module):
     def _replace_module(self, parent_module, child_name, new_module, old_module):
         """substitute the original nn.Linear to new Linear (nn.Linear+LoRA block)"""
         setattr(parent_module, child_name, new_module)
-        
-        # Ensure weight has correct shape for quantized models
-        if hasattr(old_module, 'weight') and old_module.weight is not None:
-            # Calculate correct shape based on weight size
-            total_elements = old_module.weight.numel()
-            in_features = new_module.in_features
-            out_features = total_elements // in_features
-            
-            if total_elements % in_features != 0:
-                raise ValueError(f"Weight size {total_elements} is not divisible by in_features {in_features}")
-            
-            expected_shape = (out_features, in_features)
-            if old_module.weight.shape != expected_shape:
-                # Reshape the weight to correct shape and convert to Parameter
-                old_weight = old_module.weight.reshape(expected_shape)
-                # Convert to float32 if it's not already a floating point type
-                if old_weight.dtype not in (torch.float32, torch.float16, torch.bfloat16):
-                    old_weight = old_weight.float()
-                # Convert to Parameter if it's not already
-                if not isinstance(old_weight, torch.nn.Parameter):
-                    old_weight = torch.nn.Parameter(old_weight)
-                new_module.weight = old_weight
-                # Update out_features to match the actual weight shape
-                new_module.out_features = out_features
-            else:
-                # Convert to float32 if it's not already a floating point type
-                if old_module.weight.dtype not in (torch.float32, torch.float16, torch.bfloat16):
-                    old_weight = old_module.weight.float()
-                else:
-                    old_weight = old_module.weight
-                # Convert to Parameter if it's not already
-                if not isinstance(old_weight, torch.nn.Parameter):
-                    old_weight = torch.nn.Parameter(old_weight)
-                new_module.weight = old_weight
-                
+        new_module.weight = old_module.weight
         if old_module.bias is not None:
             new_module.bias = old_module.bias
         if getattr(old_module, "state", None) is not None:  # synchronize the state and device

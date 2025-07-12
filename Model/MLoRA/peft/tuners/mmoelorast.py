@@ -324,51 +324,37 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
             for i in range(self.expert_t_num):
                 lora_A_weights = self.lora_A_t[self.active_adapter].loraA[i].mlp.weight
                 lora_B_weights = self.lora_B_t[self.active_adapter].loraB[i].mlp.weight
-                # Ensure weight is a proper Parameter before assignment
-                if hasattr(self.weight, 'data'):
-                    delta_weight = (
-                        transpose(
-                            lora_B_weights @ lora_A_weights,
-                            self.fan_in_fan_out,
-                        )
-                        * self.scaling[self.active_adapter]
-                        * expert_weight_t[..., i]
+                self.weight.data += (
+                    transpose(
+                        lora_B_weights @ lora_A_weights,
+                        self.fan_in_fan_out,
                     )
-                    # Convert to the same dtype as weight
-                    delta_weight = delta_weight.to(self.weight.dtype)
-                    self.weight.data += delta_weight
+                    * self.scaling[self.active_adapter]
+                    * expert_weight_t[..., i]
+                )
 
             #merge road
             expert_weight_r = self.lora_gate_r[self.active_adapter](x)
             for i in range(self.expert_r_num):
                 lora_A_weights = self.lora_A_r[self.active_adapter].loraA[i].mlp.weight
                 lora_B_weights = self.lora_B_r[self.active_adapter].loraB[i].mlp.weight
-                # Ensure weight is a proper Parameter before assignment
-                if hasattr(self.weight, 'data'):
-                    delta_weight = (
-                        transpose(
-                            lora_B_weights @ lora_A_weights,
-                            self.fan_in_fan_out,
-                        )
-                        * self.scaling[self.active_adapter]
-                        * expert_weight_r[..., i]
-                    )
-                    # Convert to the same dtype as weight
-                    delta_weight = delta_weight.to(self.weight.dtype)
-                    self.weight.data += delta_weight
-
-            #merge Shared
-            if hasattr(self.weight, 'data'):
-                delta_weight = (
+                self.weight.data += (
                     transpose(
-                        self.lora_B_S[self.active_adapter].weight @ self.lora_A_S[self.active_adapter].weight,
+                        lora_B_weights @ lora_A_weights,
                         self.fan_in_fan_out,
                     )
                     * self.scaling[self.active_adapter]
+                    * expert_weight_r[..., i]
                 )
-                # Convert to the same dtype as weight
-                delta_weight = delta_weight.to(self.weight.dtype)
-                self.weight.data += delta_weight
+
+            #merge Shared
+            self.weight.data += (
+                transpose(
+                    self.lora_B_S[self.active_adapter].weight @ self.lora_A_S[self.active_adapter].weight,
+                    self.fan_in_fan_out,
+                )
+                * self.scaling[self.active_adapter]
+            )
 
             self.merged = True
 
@@ -393,92 +379,58 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
             for i in range(self.expert_t_num):
                 lora_A_weights = self.lora_A_t[self.active_adapter].loraA[i].mlp.weight
                 lora_B_weights = self.lora_B_t[self.active_adapter].loraB[i].mlp.weight
-                # Ensure weight is a proper Parameter before assignment
-                if hasattr(self.weight, 'data'):
-                    delta_weight = (
-                        transpose(
-                            lora_B_weights @ lora_A_weights,
-                            self.fan_in_fan_out,
-                        )
-                        * self.scaling[self.active_adapter]
-                        * expert_weight_t[..., i]
+                self.weight.data -= (
+                    transpose(
+                        lora_B_weights @ lora_A_weights,
+                        self.fan_in_fan_out,
                     )
-                    # Convert to the same dtype as weight
-                    delta_weight = delta_weight.to(self.weight.dtype)
-                    self.weight.data -= delta_weight
+                    * self.scaling[self.active_adapter]
+                    * expert_weight_t[..., i]
+                )
 
             #unmerge road
             expert_weight_r = self.lora_gate_r[self.active_adapter](x)
             for i in range(self.expert_r_num):
                 lora_A_weights = self.lora_A_r[self.active_adapter].loraA[i].mlp.weight
                 lora_B_weights = self.lora_B_r[self.active_adapter].loraB[i].mlp.weight
-                # Ensure weight is a proper Parameter before assignment
-                if hasattr(self.weight, 'data'):
-                    delta_weight = (
-                        transpose(
-                            lora_B_weights @ lora_A_weights,
-                            self.fan_in_fan_out,
-                        )
-                        * self.scaling[self.active_adapter]
-                        * expert_weight_r[..., i]
-                    )
-                    # Convert to the same dtype as weight
-                    delta_weight = delta_weight.to(self.weight.dtype)
-                    self.weight.data -= delta_weight
-
-            #unmerge Shared
-            if hasattr(self.weight, 'data'):
-                delta_weight = (
+                self.weight.data -= (
                     transpose(
-                        self.lora_B_S[self.active_adapter].weight @ self.lora_A_S[self.active_adapter].weight,
+                        lora_B_weights @ lora_A_weights,
                         self.fan_in_fan_out,
                     )
                     * self.scaling[self.active_adapter]
+                    * expert_weight_r[..., i]
                 )
-                # Convert to the same dtype as weight
-                delta_weight = delta_weight.to(self.weight.dtype)
-                self.weight.data -= delta_weight
+
+            #unmerge Shared
+            self.weight.data -= (
+                transpose(
+                    self.lora_B_S[self.active_adapter].weight @ self.lora_A_S[self.active_adapter].weight,
+                    self.fan_in_fan_out,
+                )
+                * self.scaling[self.active_adapter]
+            )
 
             self.merged = False
 
 
     def forward(self, x: torch.Tensor, **kwargs):
-        # 推荐统一为 float32 或 float16
-        if x.dtype not in (torch.float32, torch.float16, torch.bfloat16):
-            x = x.float()
-        # 不要直接修改 weight 参数，而是确保输入和权重类型匹配
-        if self.weight.dtype not in (torch.float32, torch.float16, torch.bfloat16):
-            # 对于量化模型，我们只转换输入，不修改权重
-            x = x.to(torch.float32)
-        # 不要直接修改 bias 参数，而是在使用时转换
-        bias = None
-        if self.bias is not None:
-            try:
-                bias = self.bias.to(self.weight.dtype)
-            except (AttributeError, RuntimeError):
-                # Fallback: use float32 if conversion fails
-                bias = self.bias.to(torch.float32)
+        previous_dtype = x.dtype
+        x = x.to(self.weight.dtype)  # 保证输入和权重类型一致
         
         if self.active_adapter not in self.lora_A_t.keys():   # No adapter, directly use linear
-            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
         
         if self.disable_adapters:   # No adapter
             if self.r[self.active_adapter] > 0 and self.merged: # merge the adapter to linear
                 self.unmerge(x)
-            # Ensure x matches weight dtype
-            x = x.to(self.weight.dtype)
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
         elif self.r[self.active_adapter] > 0 and not self.merged:   # general lora process
-            # Ensure x matches weight dtype
-            x = x.to(self.weight.dtype)
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
-            # Ensure x matches the LoRA weight dtype for all LoRA operations
-            if self.active_adapter in self.lora_A_t.keys() and len(self.lora_A_t[self.active_adapter].loraA) > 0:
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
+            # Ensure x matches the LoRA weight dtype
+            if self.active_adapter in self.lora_A_t.keys():
                 x = x.to(self.lora_A_t[self.active_adapter].loraA[0].weight.dtype)
-            else:
-                # Fallback: ensure x matches the base weight dtype
-                x = x.to(self.weight.dtype)
 
             #Shared
             result += (
@@ -514,11 +466,9 @@ class MMOELoraSTLinear(nn.Linear, MMOELoraSTLayer):
                     * expert_weight_r[..., i].unsqueeze(1).unsqueeze(2) # I think .view(-1, 1, 1) is better for understanding
                  )
         else:
-            # Ensure x matches weight dtype
-            x = x.to(self.weight.dtype)
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
-        result = result.to(x.dtype) # 确保输出类型与输入一致
+        result = result.to(previous_dtype)
         return result
     
 class MMOELinearA(nn.Module):
@@ -541,13 +491,7 @@ class MMOELinearA(nn.Module):
         '''input x is a vector, return output is a list'''
         outputs = []
         for i in range(self.expert_num):
-            # Ensure input matches the expert's weight dtype
-            try:
-                x_i = x.to(self.loraA[i].weight.dtype)
-            except AttributeError:
-                # Fallback: use float32 if weight dtype is not available
-                x_i = x.to(torch.float32)
-            outputs.append(self.loraA[i](x_i))
+            outputs.append(self.loraA[i](x))
 
         return outputs
 
@@ -569,13 +513,7 @@ class MMOELinearB(nn.Module):
         '''input x is a list, return output is also a list'''
         outputs = []
         for i in range(self.expert_num):
-            # Ensure input matches the expert's weight dtype
-            try:
-                x_i = x[i].to(self.loraB[i].weight.dtype)
-            except AttributeError:
-                # Fallback: use float32 if weight dtype is not available
-                x_i = x[i].to(torch.float32)
-            outputs.append(self.loraB[i](x_i))
+            outputs.append(self.loraB[i](x[i]))
 
         return outputs
 
@@ -587,12 +525,6 @@ class Expert(nn.Module):
         self.weight = self.mlp.weight
     
     def forward(self, x):
-        # Ensure input matches weight dtype
-        try:
-            x = x.to(self.mlp.weight.dtype)
-        except AttributeError:
-            # Fallback: use float32 if weight dtype is not available
-            x = x.to(torch.float32)
         return self.mlp(x)
 
 class Gate(nn.Module):
@@ -610,12 +542,6 @@ class Gate(nn.Module):
         self.w_noise = nn.Linear(input_size, expert_num, bias=False)
     
     def forward(self, x):
-        # Ensure input matches weight dtype
-        try:
-            x = x.to(self.projection.weight.dtype)
-        except AttributeError:
-            # Fallback: use float32 if weight dtype is not available
-            x = x.to(torch.float32)
 
         x_pooled = torch.mean(x, dim=1)  # (batch_size, hidden_dim)
         
@@ -671,17 +597,13 @@ class Linear(nn.Linear, LoraLayer):
             warnings.warn("Already merged. Nothing to do.")
             return
         if self.r[self.active_adapter] > 0:
-            if hasattr(self.weight, 'data'):
-                delta_weight = (
-                    transpose(
-                        self.lora_B[self.active_adapter].weight @ self.lora_A[self.active_adapter].weight,
-                        self.fan_in_fan_out,
-                    )
-                    * self.scaling[self.active_adapter]
+            self.weight.data += (
+                transpose(
+                    self.lora_B[self.active_adapter].weight @ self.lora_A[self.active_adapter].weight,
+                    self.fan_in_fan_out,
                 )
-                # Convert to the same dtype as weight
-                delta_weight = delta_weight.to(self.weight.dtype)
-                self.weight.data += delta_weight
+                * self.scaling[self.active_adapter]
+            )
             self.merged = True
 
     def unmerge(self):
@@ -691,41 +613,26 @@ class Linear(nn.Linear, LoraLayer):
             warnings.warn("Already unmerged. Nothing to do.")
             return
         if self.r[self.active_adapter] > 0:
-            if hasattr(self.weight, 'data'):
-                delta_weight = (
-                    transpose(
-                        self.lora_B[self.active_adapter].weight @ self.lora_A[self.active_adapter].weight,
-                        self.fan_in_fan_out,
-                    )
-                    * self.scaling[self.active_adapter]
+            self.weight.data -= (
+                transpose(
+                    self.lora_B[self.active_adapter].weight @ self.lora_A[self.active_adapter].weight,
+                    self.fan_in_fan_out,
                 )
-                # Convert to the same dtype as weight
-                delta_weight = delta_weight.to(self.weight.dtype)
-                self.weight.data -= delta_weight
+                * self.scaling[self.active_adapter]
+            )
             self.merged = False
 
     def forward(self, x: torch.Tensor, **kwargs):
         previous_dtype = x.dtype
-        
-        # Ensure input tensor and bias match weight dtype for quantized models
-        x = x.to(self.weight.dtype)
-        if self.bias is not None:
-            try:
-                bias = self.bias.to(self.weight.dtype)
-            except (AttributeError, RuntimeError):
-                # Fallback: use float32 if conversion fails
-                bias = self.bias.to(torch.float32)
-        else:
-            bias = None
 
         if self.active_adapter not in self.lora_A.keys():
-            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            return F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
         if self.disable_adapters:
             if self.r[self.active_adapter] > 0 and self.merged:
                 self.unmerge()
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
         elif self.r[self.active_adapter] > 0 and not self.merged:
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
             x = x.to(self.lora_A[self.active_adapter].weight.dtype)
 
@@ -736,7 +643,7 @@ class Linear(nn.Linear, LoraLayer):
                 * self.scaling[self.active_adapter]
             )
         else:
-            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=bias)
+            result = F.linear(x, transpose(self.weight, self.fan_in_fan_out), bias=self.bias)
 
         result = result.to(previous_dtype)
 
