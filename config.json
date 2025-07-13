@@ -1,7 +1,7 @@
 {
  
     "debug": 0,
-    "stage": 1,
+    "stage": 3,
     "exp_tag": "raw",
     "device": "cuda:0",
     "seed": 42,

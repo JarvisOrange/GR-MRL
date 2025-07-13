@@ -41,8 +41,9 @@ def set_cfg():
 
     with open('./config.json', 'r', encoding='utf-8') as file:
         cfg = json.load(file)
+    if args.dataset_src_trg!=None:
+        cfg['dataset_src_trg'] = args.dataset_src_trg
     
-    cfg['dataset_src_trg'] = args.dataset_src_trg
         
     
     # cfg["exp_tag"] = args.exp_tag
