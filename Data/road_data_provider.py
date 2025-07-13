@@ -327,8 +327,9 @@ class RoadDataProvider():
 
         dataloader_list = []
         for d_t in self.data_time_cluster_list:
+            X = d_t.get_data()
             Y = None
-            R_dataset = RoadDataset(self.flag, d_t, Y, device = self.cfg['device'])
+            R_dataset = RoadDataset(self.flag, X, Y, device = self.cfg['device'])
             dataloader = DataLoader(R_dataset, batch_size = bs, shuffle = True, drop_last=drop_last)
             dataloader_list.append(dataloader)
         return dataloader_list

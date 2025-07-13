@@ -127,8 +127,9 @@ class RoadData():
         #     self._logger.info('{}_pretrain : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape))
 
         if self.flag == 'time_cluster':
-            # x : [S,  N, 2, l_his]
+            # x : [S*  N, 2, l_his]
             self.x = self.x[:, :, :2, :]
+            self.x = self.x.reshape(-1, 1, 2, self.his_num)
             self._logger.info('{}_time_cluster : x shape : {}, y shape : {}'.format(dataset_name, self.x.shape, self.y.shape)) 
             
         if self.flag == 'road_cluster':
@@ -168,7 +169,7 @@ class RoadData():
         #     return self.x
         
         if self.flag == 'time_cluster':
-            # x : [S, N, 2, l_his]
+            # x : [S* N, 2, l_his]
             return self.x
 
         if self.flag == 'road_cluster':
@@ -221,7 +222,6 @@ class RoadData():
         """
         return self.adj
 
-    
     def get_node_embed(self):
         temp1 =  self.get_laplace_matrix()
         temp2 = self.get_space_syntax_matrix()

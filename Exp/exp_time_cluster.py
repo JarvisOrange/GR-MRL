@@ -24,7 +24,6 @@ def exp_time_cluster(cfg, logger=None):
     embed_path = save_dir + 'embed.pt'.format(dataset_src)
 
     if not os.path.exists(embed_path):
-
         model_path = './Save/pretrain_model/{}/best_model.pt'.format(dataset_src)
         if not os.path.exists(model_path):
             logger.info(':( please pretrain time patch encoder first.')
@@ -37,14 +36,17 @@ def exp_time_cluster(cfg, logger=None):
         provider = RoadDataProvider(cfg, flag='time_cluster', logger=logger)
         dataloader_list = provider.generate_time_cluster_dataloader()
 
-        num_embed = dataloader.dataset.get_x_num()
+        num_embed = 0
+        for dataloader in dataloader_list:
+            num_embed += dataloader.dataset.get_x_num()
+            print(dataloader.dataset.get_x_num())
         dim_embed = cfg['TSFormer']['out_channel']
 
         time_embed_pool = torch.zeros([num_embed, dim_embed]).float()
 
         counter = 0
         for dataloader in dataloader_list:
-            for batch in tqdm(dataloader, len(dataloader), desc='Time Cluster'):
+            for batch in tqdm(dataloader):
                 x = batch
                 H = model(x)
                 B, N, L, D = H.shape 
