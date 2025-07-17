@@ -112,7 +112,6 @@
     "TSFormer": {
         "patch_size":12,
         "in_channel":1,
-
         "out_channel":128,
 
         "dropout":0.1,
@@ -131,9 +130,9 @@
 
     "lora_method": "stmoelora",
 
-    "lora_rank": 8,
+    "lora_rank": 16,
     "lora_dropout": 0.1,
-    "lora_alpha": 16,
+    "lora_alpha": 32,
 
     "target_modules": ["query_key_value"],
     "modules_to_save": ["embed_tokens", "lm_head", "mapping_layer", "output_layer"],
